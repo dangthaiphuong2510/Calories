@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_home"
+        android:icon="@drawable/ic_nav_home"
+        android:background="@color/divider"
+        android:title="@string/nav_home" />
+    <item
+        android:id="@+id/nav_food"
+        android:icon="@drawable/ic_nav_food"
+        android:background="@color/divider"
+        android:title="@string/nav_food" />
+    <item
+        android:id="@+id/nav_fridge"
+        android:icon="@drawable/ic_nav_fridge"
+        android:background="@color/divider"
+        android:title="@string/nav_fridge" />
+    <item
+        android:id="@+id/nav_progress"
+        android:icon="@drawable/ic_nav_progress"
+        android:background="@color/divider"
+        android:title="@string/nav_progress" />
+    <item
+        android:id="@+id/nav_profile"
+        android:icon="@drawable/ic_nav_profile"
+        android:background="@color/divider"
+        android:title="@string/nav_profile" />
+</menu>
