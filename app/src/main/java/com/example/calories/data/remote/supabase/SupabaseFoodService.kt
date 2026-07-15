@@ -42,20 +42,24 @@ class SupabaseFoodService @Inject constructor(
     }
 
     suspend fun getAllFoodEntries(): List<FoodEntry> {
-        requireCurrentUserId()
+        val userId = requireCurrentUserId()
         return supabase.from(TABLE_NAME)
             .select {
+                filter {
+                    eq("user_id", userId)
+                }
                 order(column = CREATED_AT_COLUMN, order = Order.DESCENDING)
             }
             .decodeList<FoodEntry>()
     }
 
     suspend fun deleteFoodEntry(id: String) {
-        requireCurrentUserId()
+        val userId = requireCurrentUserId()
         supabase.from(TABLE_NAME)
             .delete {
                 filter {
                     eq("id", id)
+                    eq("user_id", userId)
                 }
             }
     }

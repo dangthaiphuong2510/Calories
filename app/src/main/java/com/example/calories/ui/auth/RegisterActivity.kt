@@ -1,6 +1,5 @@
 package com.example.calories.ui.auth
 
-import android.content.Intent
 import android.os.Bundle
 import android.util.Patterns
 import android.widget.Toast
@@ -10,7 +9,6 @@ import com.example.calories.R
 import com.example.calories.databinding.ActivityRegisterBinding
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
-import com.example.calories.ui.onboarding.OnboardingActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -52,11 +50,6 @@ class RegisterActivity : AppCompatActivity() {
             }
         }
         collectLatestStarted(viewModel.navEvents) {
-            startActivity(
-                Intent(this, OnboardingActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                },
-            )
             finish()
         }
     }

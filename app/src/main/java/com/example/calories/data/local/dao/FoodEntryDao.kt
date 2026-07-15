@@ -33,6 +33,9 @@ interface FoodEntryDao {
     @Query("SELECT * FROM food_entries WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): FoodEntryEntity?
 
+    @Query("SELECT * FROM food_entries WHERE userId = :userId AND isDirty = 1")
+    suspend fun getDirty(userId: String): List<FoodEntryEntity>
+
     @Upsert
     suspend fun upsert(entry: FoodEntryEntity)
 
@@ -44,6 +47,9 @@ interface FoodEntryDao {
 
     @Query("DELETE FROM food_entries WHERE userId = :userId")
     suspend fun deleteAllForUser(userId: String)
+
+    @Query("DELETE FROM food_entries WHERE userId = :userId AND isDirty = 0")
+    suspend fun deleteSyncedForUser(userId: String)
 
     @Transaction
     suspend fun clearAndInsert(userId: String, entries: List<FoodEntryEntity>) {

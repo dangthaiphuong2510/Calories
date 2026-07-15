@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="0dp"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_weight="1"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:padding="4dp">
+
+    <!-- Khung chứa vòng tròn và các thành phần đè lên nhau -->
+    <RelativeLayout
+        android:id="@+id/rlCircleContainer"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_centerHorizontal="true"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <View
+            android:id="@+id/viewCircleBg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/bg_home_meal_circle_base" />
+
+        <ImageView
+            android:id="@+id/ivMealIllustration"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_centerInParent="true"
+            android:contentDescription="@null"
+            tools:src="@drawable/ic_meal_breakfast_48" />
+
+        <TextView
+            android:id="@+id/tvMealCircleCalories"
+            android:layout_width="64dp"
+            android:layout_height="18dp"
+            android:layout_alignParentBottom="true"
+            android:layout_centerHorizontal="true"
+            android:background="@drawable/bg_home_meal_calorie_banner"
+            android:gravity="center"
+            android:textColor="@android:color/white"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            tools:text="259" />
+
+    </RelativeLayout>
+
+    <ImageButton
+        android:id="@+id/btnAddMealFood"
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:layout_alignBottom="@id/rlCircleContainer"
+        android:layout_alignEnd="@id/rlCircleContainer"
+        android:layout_marginBottom="-8dp"
+        android:layout_marginEnd="-8dp"
+        android:background="@drawable/bg_meal_add_button"
+        android:contentDescription="@null"
+        android:elevation="4dp"
+        android:padding="6dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_add_24"
+        app:tint="@android:color/white" />
+
+    <TextView
+        android:id="@+id/tvMealCircleTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/rlCircleContainer"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="18dp"
+        android:textColor="@color/text_primary"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        tools:text="Breakfast" />
+
+</RelativeLayout>

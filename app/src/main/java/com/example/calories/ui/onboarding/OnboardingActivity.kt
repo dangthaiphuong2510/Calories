@@ -96,8 +96,14 @@ class OnboardingActivity : AppCompatActivity() {
         })
     }
 
+    private var didApplyPrefill = false
+
     private fun observeViewModel() {
         collectLatestStarted(viewModel.formState) { state ->
+            if (state.isPrefillReady && !didApplyPrefill && state.existingGoalId != null) {
+                didApplyPrefill = true
+                applyPrefill(state)
+            }
             binding.tvTdee.text = if (state.tdee == 0) "—" else state.tdee.toString()
             binding.tvDailyCalories.text =
                 if (state.dailyCalories == 0) "—" else state.dailyCalories.toString()
@@ -119,6 +125,35 @@ class OnboardingActivity : AppCompatActivity() {
             )
             finish()
         }
+    }
+
+    private fun applyPrefill(state: OnboardingFormState) {
+        binding.tgGender.check(
+            if (state.gender == Gender.FEMALE) R.id.btnFemale else R.id.btnMale,
+        )
+        binding.etAge.setText(state.age?.toString().orEmpty())
+        binding.etHeight.setText(state.heightCm?.toString().orEmpty())
+        binding.etCurrentWeight.setText(state.currentWeight?.toString().orEmpty())
+        binding.etTargetWeight.setText(state.targetWeight?.toString().orEmpty())
+
+        val activityLabels = listOf(
+            getString(R.string.activity_sedentary),
+            getString(R.string.activity_light),
+            getString(R.string.activity_moderate),
+            getString(R.string.activity_active),
+            getString(R.string.activity_very_active),
+        )
+        binding.actActivityLevel.setText(
+            activityLabels[state.activityLevel.ordinal],
+            false,
+        )
+
+        val goalLabels = listOf(
+            getString(R.string.goal_lose_weight),
+            getString(R.string.goal_gain_muscle),
+            getString(R.string.goal_maintain),
+        )
+        binding.actGoalType.setText(goalLabels[state.goalType.ordinal], false)
     }
 
     private fun simpleWatcher(onChanged: () -> Unit) = object : TextWatcher {

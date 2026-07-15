@@ -2,7 +2,9 @@ package com.example.calories.ui.profile
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.calories.data.repository.ProfileRepository
 import com.example.calories.data.repository.UserGoalsRepository
+import com.example.calories.model.Profile
 import com.example.calories.model.UserGoal
 import com.example.calories.model.enums.ActivityLevel
 import com.example.calories.model.enums.GoalType
@@ -13,9 +15,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -27,6 +29,7 @@ data class ProfileUiState(
     val userName: String = "User",
     val userEmail: String = "",
     val goal: UserGoal? = null,
+    val profile: Profile? = null,
 )
 
 sealed interface ProfileNavEvent {
@@ -38,6 +41,7 @@ sealed interface ProfileNavEvent {
 class ProfileViewModel @Inject constructor(
     private val supabase: SupabaseClient,
     private val userGoalsRepository: UserGoalsRepository,
+    private val profileRepository: ProfileRepository,
 ) : ViewModel() {
 
     private val userId: String? get() = supabase.auth.currentUserOrNull()?.id
@@ -48,13 +52,23 @@ class ProfileViewModel @Inject constructor(
     val uiState: StateFlow<ProfileUiState> = flowOf(userId)
         .flatMapLatest { id ->
             val user = supabase.auth.currentUserOrNull()
-            val name = user?.userMetadata?.get("full_name")?.jsonPrimitive?.contentOrNull ?: "User"
+            val authName = user?.userMetadata?.get("full_name")?.jsonPrimitive?.contentOrNull
             val email = user?.email.orEmpty()
             if (id == null) {
-                flowOf(ProfileUiState(userName = name, userEmail = email))
+                flowOf(ProfileUiState(userName = authName ?: "User", userEmail = email))
             } else {
-                userGoalsRepository.observeGoal(id).map { goal ->
-                    ProfileUiState(userName = name, userEmail = email, goal = goal)
+                combine(
+                    userGoalsRepository.observeGoal(id),
+                    profileRepository.observeProfile(id),
+                ) { goal, profile ->
+                    ProfileUiState(
+                        userName = profile?.displayName?.takeIf { it.isNotBlank() }
+                            ?: authName
+                            ?: "User",
+                        userEmail = email,
+                        goal = goal,
+                        profile = profile,
+                    )
                 }
             }
         }
@@ -68,6 +82,7 @@ class ProfileViewModel @Inject constructor(
         val id = userId ?: return
         viewModelScope.launch {
             runCatching { userGoalsRepository.refresh(id) }
+            runCatching { profileRepository.refresh(id) }
         }
     }
 

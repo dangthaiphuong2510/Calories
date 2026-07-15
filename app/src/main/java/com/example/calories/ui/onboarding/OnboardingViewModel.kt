@@ -16,6 +16,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,6 +24,7 @@ import java.util.UUID
 import javax.inject.Inject
 
 data class OnboardingFormState(
+    val existingGoalId: String? = null,
     val gender: Gender = Gender.MALE,
     val age: Int? = null,
     val heightCm: Double? = null,
@@ -33,6 +35,7 @@ data class OnboardingFormState(
     val tdee: Int = 0,
     val dailyCalories: Int = 0,
     val isLoading: Boolean = false,
+    val isPrefillReady: Boolean = false,
 )
 
 sealed interface OnboardingNavEvent {
@@ -53,6 +56,45 @@ class OnboardingViewModel @Inject constructor(
 
     private val _navEvents = Channel<OnboardingNavEvent>(Channel.BUFFERED)
     val navEvents = _navEvents.receiveAsFlow()
+
+    init {
+        loadExistingGoal()
+    }
+
+    fun loadExistingGoal() {
+        val userId = supabase.auth.currentUserOrNull()?.id ?: run {
+            _formState.update { it.copy(isPrefillReady = true) }
+            return
+        }
+        viewModelScope.launch {
+            try {
+                userGoalsRepository.refresh(userId)
+                val goal = userGoalsRepository.observeGoal(userId).first()
+                if (goal != null) {
+                    _formState.update {
+                        it.copy(
+                            existingGoalId = goal.id,
+                            gender = goal.gender,
+                            age = goal.age,
+                            heightCm = goal.heightCm,
+                            currentWeight = goal.currentWeight,
+                            targetWeight = goal.targetWeight,
+                            activityLevel = goal.activityLevel,
+                            goalType = goal.goalType,
+                            tdee = goal.tdee,
+                            dailyCalories = goal.dailyCalories,
+                            isPrefillReady = true,
+                        )
+                    }
+                } else {
+                    _formState.update { it.copy(isPrefillReady = true) }
+                }
+            } catch (e: Exception) {
+                _formState.update { it.copy(isPrefillReady = true) }
+                _events.send(UiEvent.Message(e.message ?: "Could not load goals"))
+            }
+        }
+    }
 
     fun updateGender(gender: Gender) {
         _formState.update { it.copy(gender = gender) }
@@ -114,7 +156,7 @@ class OnboardingViewModel @Inject constructor(
             try {
                 userGoalsRepository.saveGoal(
                     UserGoal(
-                        id = UUID.randomUUID().toString(),
+                        id = state.existingGoalId ?: UUID.randomUUID().toString(),
                         userId = userId,
                         targetWeight = targetWeight,
                         currentWeight = currentWeight,

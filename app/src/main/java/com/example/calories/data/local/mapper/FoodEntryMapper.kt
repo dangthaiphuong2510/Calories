@@ -13,6 +13,7 @@ fun FoodEntryEntity.toDomain(): FoodEntry = FoodEntry(
     carb = carb,
     fat = fat,
     mealType = runCatching { MealType.valueOf(mealType) }.getOrDefault(MealType.SNACK),
+    servingGrams = servingGrams,
     createdAt = createdAt,
 )
 
@@ -28,6 +29,7 @@ fun FoodEntry.toEntity(
     carb = carb,
     fat = fat,
     mealType = mealType.name,
+    servingGrams = servingGrams,
     createdAt = createdAt,
     isDirty = isDirty,
     syncedAt = syncedAt,

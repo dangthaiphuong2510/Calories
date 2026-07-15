@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="home_screen_padding">16dp</dimen>
+    <dimen name="home_card_padding">20dp</dimen>
+    <dimen name="home_card_radius">16dp</dimen>
+    <dimen name="home_card_elevation">2dp</dimen>
+    <dimen name="home_section_gap">12dp</dimen>
+    <dimen name="home_header_gap">16dp</dimen>
+    <dimen name="home_icon_button_size">40dp</dimen>
+    <dimen name="home_progress_thickness">14dp</dimen>
+    <dimen name="home_macro_track_thickness">8dp</dimen>
+    <dimen name="home_calorie_ring_size">200dp</dimen>
+    <dimen name="home_calorie_ring_box">220dp</dimen>
+    <dimen name="nav_camera_fab_size">56dp</dimen>
+    <dimen name="nav_camera_fab_margin_top">6dp</dimen>
+</resources>

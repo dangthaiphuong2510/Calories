@@ -2,6 +2,7 @@ package com.example.calories.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.calories.R
 import com.example.calories.ui.common.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -23,7 +24,7 @@ data class RegisterUiState(
 )
 
 sealed interface RegisterNavEvent {
-    data object ToOnboarding : RegisterNavEvent
+    data object ToLogin : RegisterNavEvent
 }
 
 @HiltViewModel
@@ -44,6 +45,7 @@ class RegisterViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                supabase.auth.awaitInitialization()
                 supabase.auth.signUpWith(Email) {
                     this.email = email
                     this.password = password
@@ -51,7 +53,15 @@ class RegisterViewModel @Inject constructor(
                         put("full_name", name)
                     }
                 }
-                _navEvents.send(RegisterNavEvent.ToOnboarding)
+
+                // Keep login as the next step: clear any auto session after sign-up.
+                if (supabase.auth.currentSessionOrNull() != null) {
+                    runCatching { supabase.auth.signOut() }
+                }
+
+                _uiState.update { it.copy(isLoading = false) }
+                _events.send(UiEvent.MessageRes(R.string.register_success_message))
+                _navEvents.send(RegisterNavEvent.ToLogin)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
                 _events.send(UiEvent.Message(e.message ?: "Registration failed"))
