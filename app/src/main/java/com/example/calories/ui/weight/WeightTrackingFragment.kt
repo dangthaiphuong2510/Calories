@@ -37,6 +37,11 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
         observeViewModel()
     }
 
+    override fun onResume() {
+        super.onResume()
+        viewModel.refresh()
+    }
+
     private fun observeViewModel() {
         val primaryColor = ContextCompat.getColor(requireContext(), R.color.primary)
         viewLifecycleOwner.collectLatestStarted(viewModel.uiState) { state ->

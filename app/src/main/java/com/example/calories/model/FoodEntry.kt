@@ -17,6 +17,7 @@ data class FoodEntry(
     val carb: Double = 0.0,
     val fat: Double = 0.0,
     @SerialName("meal_type") val mealType: MealType = MealType.SNACK,
+    @SerialName("serving_grams") val servingGrams: Double = 100.0,
     @SerialName("created_at") val createdAt: String,
 )
 

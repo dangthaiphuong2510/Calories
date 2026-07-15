@@ -13,6 +13,7 @@ data class FoodEntryEntity(
     val carb: Double,
     val fat: Double,
     val mealType: String,
+    val servingGrams: Double = 100.0,
     val createdAt: String,
     val isDirty: Boolean = false,
     val syncedAt: Long? = null,

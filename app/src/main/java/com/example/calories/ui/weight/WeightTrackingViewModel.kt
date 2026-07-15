@@ -50,10 +50,13 @@ class WeightTrackingViewModel @Inject constructor(
                     weightRepository.observeWeightEntries(id),
                     userGoalsRepository.observeGoal(id),
                 ) { entries, goal ->
+                    val chronological = entries.sortedBy { it.recordedAt }
                     WeightUiState(
-                        currentWeightKg = entries.firstOrNull()?.weightKg ?: goal?.currentWeight,
+                        currentWeightKg = chronological.lastOrNull()?.weightKg
+                            ?: goal?.currentWeight,
                         targetWeightKg = goal?.targetWeight,
-                        entries = entries,
+                        // Newest first for the history list.
+                        entries = chronological.asReversed(),
                     )
                 }
             }
@@ -75,7 +78,10 @@ class WeightTrackingViewModel @Inject constructor(
     fun addWeight(weightKg: Double) {
         viewModelScope.launch {
             try {
-                weightRepository.addWeightEntry(weightKg, DateTimeUtils.nowIso())
+                weightRepository.upsertWeightForDate(
+                    weightKg = weightKg,
+                    date = DateTimeUtils.today(),
+                )
             } catch (e: Exception) {
                 _events.send(UiEvent.Message(e.message ?: "Could not log weight"))
             }

@@ -1,11 +1,17 @@
 package com.example.calories.di
 
+import com.example.calories.data.repository.ExerciseRepository
+import com.example.calories.data.repository.ExerciseRepositoryImpl
 import com.example.calories.data.repository.FoodRepository
 import com.example.calories.data.repository.FoodRepositoryImpl
 import com.example.calories.data.repository.FridgeRepository
 import com.example.calories.data.repository.FridgeRepositoryImpl
+import com.example.calories.data.repository.ProfileRepository
+import com.example.calories.data.repository.ProfileRepositoryImpl
 import com.example.calories.data.repository.UserGoalsRepository
 import com.example.calories.data.repository.UserGoalsRepositoryImpl
+import com.example.calories.data.repository.WaterRepository
+import com.example.calories.data.repository.WaterRepositoryImpl
 import com.example.calories.data.repository.WeightRepository
 import com.example.calories.data.repository.WeightRepositoryImpl
 import dagger.Binds
@@ -33,4 +39,16 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindFridgeRepository(impl: FridgeRepositoryImpl): FridgeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindExerciseRepository(impl: ExerciseRepositoryImpl): ExerciseRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWaterRepository(impl: WaterRepositoryImpl): WaterRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
 }

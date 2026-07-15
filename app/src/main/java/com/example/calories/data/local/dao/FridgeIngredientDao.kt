@@ -16,6 +16,9 @@ interface FridgeIngredientDao {
     @Query("SELECT * FROM fridge_ingredients WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): FridgeIngredientEntity?
 
+    @Query("SELECT * FROM fridge_ingredients WHERE userId = :userId AND isDirty = 1")
+    suspend fun getDirty(userId: String): List<FridgeIngredientEntity>
+
     @Upsert
     suspend fun upsert(ingredient: FridgeIngredientEntity)
 
@@ -27,6 +30,9 @@ interface FridgeIngredientDao {
 
     @Query("DELETE FROM fridge_ingredients WHERE userId = :userId")
     suspend fun deleteAllForUser(userId: String)
+
+    @Query("DELETE FROM fridge_ingredients WHERE userId = :userId AND isDirty = 0")
+    suspend fun deleteSyncedForUser(userId: String)
 
     @Transaction
     suspend fun clearAndInsert(userId: String, ingredients: List<FridgeIngredientEntity>) {

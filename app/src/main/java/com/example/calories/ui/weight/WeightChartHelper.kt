@@ -20,7 +20,7 @@ object WeightChartHelper {
             return
         }
 
-        val chronological = entries.asReversed()
+        val chronological = entries.sortedBy { it.recordedAt }
         val points = chronological.mapIndexed { index, item ->
             Entry(index.toFloat(), item.weightKg.toFloat())
         }

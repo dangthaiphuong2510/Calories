@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,6 +8,16 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun localProp(key: String, default: String = ""): String =
+    localProperties.getProperty(key)?.trim().orEmpty().ifEmpty { default }
 
 android {
     namespace = "com.example.calories"
@@ -20,9 +32,13 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        buildConfigField("String", "SUPABASE_URL", "\"https://YOUR_PROJECT.supabase.co\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"YOUR_ANON_KEY\"")
-        buildConfigField("String", "GEMINI_API_KEY", "\"YOUR_GEMINI_API_KEY\"")
+        val supabaseUrl = localProp("SUPABASE_URL", "https://YOUR_PROJECT.supabase.co")
+        val supabaseAnonKey = localProp("SUPABASE_ANON_KEY", "YOUR_ANON_KEY")
+        val geminiApiKey = localProp("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
+
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
     buildFeatures {
@@ -52,9 +68,10 @@ android {
 }
 
 dependencies {
-    implementation(platform(libs.supabase.bom))
+    implementation(libs.constraintlayout)
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.auth)
+    implementation(libs.supabase.realtime)
     implementation(libs.ktor.client.android)
 
     implementation(libs.androidx.core.ktx)

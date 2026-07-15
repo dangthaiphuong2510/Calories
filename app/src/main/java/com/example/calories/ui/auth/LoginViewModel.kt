@@ -55,9 +55,15 @@ class LoginViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             try {
+                supabase.auth.awaitInitialization()
                 supabase.auth.signInWith(Email) {
                     this.email = email
                     this.password = password
+                }
+                if (supabase.auth.currentUserOrNull() == null) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    _events.send(UiEvent.Message("Login failed. Check email/password or confirm your email."))
+                    return@launch
                 }
                 resolveDestination()
             } catch (e: Exception) {

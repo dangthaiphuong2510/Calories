@@ -2,6 +2,7 @@ package com.example.calories.ui
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.ViewGroup
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -12,11 +13,12 @@ import androidx.fragment.app.FragmentManager
 import com.example.calories.R
 import com.example.calories.databinding.ActivityMainBinding
 import com.example.calories.ui.auth.LoginActivity
-import com.example.calories.ui.fridge.FridgeFragment
+import com.example.calories.ui.camera.FoodCameraFragment
+import com.example.calories.ui.explore.ExploreFragment
 import com.example.calories.ui.home.HomeFragment
-import com.example.calories.ui.nutrition.FoodLogFragment
 import com.example.calories.ui.profile.ProfileFragment
 import com.example.calories.ui.weight.WeightTrackingFragment
+import com.google.android.material.navigation.NavigationBarView
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -48,30 +50,87 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupBottomNavigation()
+        alignCenterCameraTab()
+
         if (savedInstanceState == null) {
             binding.bottomNav.selectedItemId = R.id.nav_home
         }
     }
 
     private fun setupBottomNavigation() {
+        binding.fabCameraAi.setOnClickListener { openCameraAi() }
+
+        binding.bottomNav.labelVisibilityMode = NavigationBarView.LABEL_VISIBILITY_LABELED
+
         binding.bottomNav.setOnItemSelectedListener { item ->
-            supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-            val fragment: Fragment = when (item.itemId) {
-                R.id.nav_home -> HomeFragment()
-                R.id.nav_food -> FoodLogFragment()
-                R.id.nav_fridge -> FridgeFragment()
-                R.id.nav_progress -> WeightTrackingFragment()
-                R.id.nav_profile -> ProfileFragment()
-                else -> return@setOnItemSelectedListener false
+            when (item.itemId) {
+                R.id.navigation_camera -> {
+                    openCameraAi()
+                    false
+                }
+                R.id.nav_home,
+                R.id.navigation_explore,
+                R.id.nav_progress,
+                R.id.nav_profile,
+                    -> {
+                    supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                    openFragment(fragmentFor(item.itemId))
+                    true
+                }
+                else -> false
             }
-            openFragment(fragment)
-            true
         }
+    }
+
+    private fun alignCenterCameraTab() {
+        binding.bottomNav.post {
+            val menuView = binding.bottomNav.getChildAt(0) as? ViewGroup
+            menuView?.let { group ->
+                val cameraTabView = group.getChildAt(2) as? ViewGroup
+                cameraTabView?.let { tab ->
+                    tab.translationY = 0f
+                    tab.setPadding(0, 0, 0, 0)
+
+                    for (i in 0 until tab.childCount) {
+                        val child = tab.getChildAt(i)
+                        child.translationY = 0f
+
+                        val params = child.layoutParams as? ViewGroup.MarginLayoutParams
+                        params?.let { marginParams ->
+                            marginParams.topMargin = 0
+                            marginParams.bottomMargin = 0
+                            child.layoutParams = marginParams
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun fragmentFor(itemId: Int): Fragment = when (itemId) {
+        R.id.navigation_explore -> ExploreFragment()
+        R.id.nav_progress -> WeightTrackingFragment()
+        R.id.nav_profile -> ProfileFragment()
+        else -> HomeFragment()
     }
 
     private fun openFragment(fragment: Fragment) {
         supportFragmentManager.beginTransaction()
             .replace(R.id.navHostFragment, fragment)
             .commit()
+    }
+
+    private fun openCameraAi() {
+        val existing = supportFragmentManager.findFragmentById(R.id.navHostFragment)
+        if (existing is FoodCameraFragment) return
+
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.navHostFragment, FoodCameraFragment())
+            .addToBackStack(CAMERA_BACK_STACK)
+            .commit()
+    }
+
+    private companion object {
+        const val CAMERA_BACK_STACK = "camera_ai"
     }
 }

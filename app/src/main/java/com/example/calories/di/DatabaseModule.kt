@@ -3,9 +3,12 @@ package com.example.calories.di
 import android.content.Context
 import androidx.room.Room
 import com.example.calories.data.local.CaloriesDatabase
+import com.example.calories.data.local.dao.ExerciseEntryDao
 import com.example.calories.data.local.dao.FoodEntryDao
 import com.example.calories.data.local.dao.FridgeIngredientDao
+import com.example.calories.data.local.dao.ProfileDao
 import com.example.calories.data.local.dao.UserGoalDao
+import com.example.calories.data.local.dao.WaterEntryDao
 import com.example.calories.data.local.dao.WeightEntryDao
 import dagger.Module
 import dagger.Provides
@@ -28,7 +31,7 @@ object DatabaseModule {
             CaloriesDatabase::class.java,
             DATABASE_NAME,
         )
-            .fallbackToDestructiveMigration(dropAllTables = true)
+            .fallbackToDestructiveMigration()
             .build()
     }
 
@@ -47,6 +50,18 @@ object DatabaseModule {
     @Provides
     fun provideFridgeIngredientDao(database: CaloriesDatabase): FridgeIngredientDao =
         database.fridgeIngredientDao()
+
+    @Provides
+    fun provideExerciseEntryDao(database: CaloriesDatabase): ExerciseEntryDao =
+        database.exerciseEntryDao()
+
+    @Provides
+    fun provideWaterEntryDao(database: CaloriesDatabase): WaterEntryDao =
+        database.waterEntryDao()
+
+    @Provides
+    fun provideProfileDao(database: CaloriesDatabase): ProfileDao =
+        database.profileDao()
 
     private const val DATABASE_NAME = "calories.db"
 }
