@@ -2,17 +2,13 @@ package com.example.calories.ui.onboarding
 
 import android.content.Intent
 import android.os.Bundle
-import android.text.Editable
-import android.text.TextWatcher
-import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isInvisible
+import androidx.viewpager2.widget.ViewPager2
 import com.example.calories.R
 import com.example.calories.databinding.ActivityOnboardingBinding
-import com.example.calories.model.enums.ActivityLevel
-import com.example.calories.model.enums.Gender
-import com.example.calories.model.enums.GoalType
 import com.example.calories.ui.MainActivity
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
@@ -29,87 +25,59 @@ class OnboardingActivity : AppCompatActivity() {
         binding = ActivityOnboardingBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupGenderToggle()
-        setupDropdowns()
-        setupInputWatchers()
-        binding.btnContinue.setOnClickListener {
-            viewModel.updateTargetWeight(
-                binding.etTargetWeight.text?.toString()?.toDoubleOrNull(),
-            )
-            viewModel.saveGoals()
+        binding.viewPager.adapter = OnboardingPagerAdapter(this)
+        binding.viewPager.isUserInputEnabled = false
+        binding.viewPager.offscreenPageLimit = OnboardingPagerAdapter.PAGE_COUNT - 1
+
+        binding.viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                viewModel.setCurrentPage(position)
+                updateChrome(position)
+            }
+        })
+
+        binding.btnBack.setOnClickListener {
+            val previous = binding.viewPager.currentItem - 1
+            if (previous >= 0) binding.viewPager.currentItem = previous
         }
+        binding.btnContinue.setOnClickListener { onContinueClicked() }
+
+        updateChrome(0)
         observeViewModel()
     }
 
-    private fun setupGenderToggle() {
-        binding.tgGender.check(R.id.btnMale)
-        binding.tgGender.addOnButtonCheckedListener { _, checkedId, isChecked ->
-            if (!isChecked) return@addOnButtonCheckedListener
-            viewModel.updateGender(
-                if (checkedId == R.id.btnFemale) Gender.FEMALE else Gender.MALE,
-            )
+    private fun onContinueClicked() {
+        val page = binding.viewPager.currentItem
+        if (page == OnboardingPagerAdapter.PAGE_PLAN) {
+            viewModel.saveGoals()
+            return
+        }
+        if (viewModel.validatePage(page)) {
+            binding.viewPager.currentItem = page + 1
         }
     }
 
-    private fun setupDropdowns() {
-        val activityLabels = listOf(
-            getString(R.string.activity_sedentary),
-            getString(R.string.activity_light),
-            getString(R.string.activity_moderate),
-            getString(R.string.activity_active),
-            getString(R.string.activity_very_active),
+    private fun updateChrome(position: Int) {
+        val step = position + 1
+        binding.tvStepLabel.text = getString(
+            R.string.onboarding_step_format,
+            step,
+            OnboardingPagerAdapter.PAGE_COUNT,
         )
-        binding.actActivityLevel.setAdapter(
-            ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, activityLabels),
-        )
-        binding.actActivityLevel.setText(activityLabels[2], false)
-        binding.actActivityLevel.setOnItemClickListener { _, _, position, _ ->
-            viewModel.updateActivityLevel(ActivityLevel.entries[position])
-        }
-
-        val goalLabels = listOf(
-            getString(R.string.goal_lose_weight),
-            getString(R.string.goal_gain_muscle),
-            getString(R.string.goal_maintain),
-        )
-        binding.actGoalType.setAdapter(
-            ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, goalLabels),
-        )
-        binding.actGoalType.setText(goalLabels[2], false)
-        binding.actGoalType.setOnItemClickListener { _, _, position, _ ->
-            viewModel.updateGoalType(GoalType.entries[position])
+        binding.progressSteps.setProgressCompat(step, true)
+        binding.btnBack.isInvisible = position == OnboardingPagerAdapter.PAGE_BASIC
+        val isLoading = viewModel.formState.value.isLoading
+        binding.btnContinue.isEnabled = !isLoading
+        binding.btnContinue.text = when {
+            isLoading -> "..."
+            position == OnboardingPagerAdapter.PAGE_PLAN -> getString(R.string.get_started)
+            else -> getString(R.string.continue_btn)
         }
     }
-
-    private fun setupInputWatchers() {
-        binding.etAge.addTextChangedListener(simpleWatcher {
-            viewModel.updateAge(binding.etAge.text?.toString()?.toIntOrNull())
-        })
-        binding.etHeight.addTextChangedListener(simpleWatcher {
-            viewModel.updateHeight(binding.etHeight.text?.toString()?.toDoubleOrNull())
-        })
-        binding.etCurrentWeight.addTextChangedListener(simpleWatcher {
-            viewModel.updateCurrentWeight(binding.etCurrentWeight.text?.toString()?.toDoubleOrNull())
-        })
-        binding.etTargetWeight.addTextChangedListener(simpleWatcher {
-            viewModel.updateTargetWeight(binding.etTargetWeight.text?.toString()?.toDoubleOrNull())
-        })
-    }
-
-    private var didApplyPrefill = false
 
     private fun observeViewModel() {
         collectLatestStarted(viewModel.formState) { state ->
-            if (state.isPrefillReady && !didApplyPrefill && state.existingGoalId != null) {
-                didApplyPrefill = true
-                applyPrefill(state)
-            }
-            binding.tvTdee.text = if (state.tdee == 0) "—" else state.tdee.toString()
-            binding.tvDailyCalories.text =
-                if (state.dailyCalories == 0) "—" else state.dailyCalories.toString()
-            binding.btnContinue.isEnabled = !state.isLoading
-            binding.btnContinue.text =
-                if (state.isLoading) "..." else getString(R.string.continue_btn)
+            updateChrome(state.currentPage)
         }
         collectLatestStarted(viewModel.events) { event ->
             when (event) {
@@ -125,40 +93,5 @@ class OnboardingActivity : AppCompatActivity() {
             )
             finish()
         }
-    }
-
-    private fun applyPrefill(state: OnboardingFormState) {
-        binding.tgGender.check(
-            if (state.gender == Gender.FEMALE) R.id.btnFemale else R.id.btnMale,
-        )
-        binding.etAge.setText(state.age?.toString().orEmpty())
-        binding.etHeight.setText(state.heightCm?.toString().orEmpty())
-        binding.etCurrentWeight.setText(state.currentWeight?.toString().orEmpty())
-        binding.etTargetWeight.setText(state.targetWeight?.toString().orEmpty())
-
-        val activityLabels = listOf(
-            getString(R.string.activity_sedentary),
-            getString(R.string.activity_light),
-            getString(R.string.activity_moderate),
-            getString(R.string.activity_active),
-            getString(R.string.activity_very_active),
-        )
-        binding.actActivityLevel.setText(
-            activityLabels[state.activityLevel.ordinal],
-            false,
-        )
-
-        val goalLabels = listOf(
-            getString(R.string.goal_lose_weight),
-            getString(R.string.goal_gain_muscle),
-            getString(R.string.goal_maintain),
-        )
-        binding.actGoalType.setText(goalLabels[state.goalType.ordinal], false)
-    }
-
-    private fun simpleWatcher(onChanged: () -> Unit) = object : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-        override fun afterTextChanged(s: Editable?) = onChanged()
     }
 }

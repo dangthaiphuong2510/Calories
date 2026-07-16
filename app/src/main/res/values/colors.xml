@@ -10,6 +10,7 @@
     <color name="text_secondary">#757575</color>
     <color name="text_hint">#9E9E9E</color>
     <color name="divider">#CBE3B8</color>
+    <color name="primary_hover_light">#3ACBE3B8</color>
     <color name="background">#FFFFFF</color>
     <color name="surface">#F7FAF4</color>
     <color name="error">#D32F2F</color>
@@ -23,4 +24,5 @@
     <color name="water_empty">#E0E0E0</color>
     <color name="card_stroke">#E8EEE3</color>
     <color name="success_green">#2E7D32</color>
+
 </resources>

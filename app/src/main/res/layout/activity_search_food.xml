@@ -81,6 +81,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tilSearch"
         app:tabIndicatorColor="@color/primary"
+        android:background="@color/primary_hover_light"
         app:tabMode="fixed"
         app:tabSelectedTextColor="@color/primary"
         app:tabTextColor="@color/text_secondary" />
@@ -110,13 +111,16 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:checked="true"
+                android:backgroundTint="@color/primary_hover_light"
                 android:text="@string/filter_all" />
+
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipHighProtein"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary_hover_light"
                 android:text="@string/filter_high_protein" />
 
             <com.google.android.material.chip.Chip
@@ -124,6 +128,7 @@
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary_hover_light"
                 android:text="@string/filter_low_carbs" />
 
             <com.google.android.material.chip.Chip
@@ -131,6 +136,7 @@
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:backgroundTint="@color/primary_hover_light"
                 android:text="@string/filter_low_fat" />
         </com.google.android.material.chip.ChipGroup>
     </HorizontalScrollView>

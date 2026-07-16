@@ -35,10 +35,12 @@ android {
         val supabaseUrl = localProp("SUPABASE_URL", "https://YOUR_PROJECT.supabase.co")
         val supabaseAnonKey = localProp("SUPABASE_ANON_KEY", "YOUR_ANON_KEY")
         val geminiApiKey = localProp("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
+        val googleWebClientId = localProp("GOOGLE_WEB_CLIENT_ID", "")
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
         buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$googleWebClientId\"")
     }
 
     buildFeatures {
@@ -81,10 +83,15 @@ dependencies {
     implementation(libs.androidx.constraintlayout)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.fragment.ktx)
+    implementation(libs.androidx.viewpager2)
     implementation(libs.androidx.recyclerview)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.mpandroidchart)
+    implementation(libs.coil)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)

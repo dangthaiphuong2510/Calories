@@ -4,6 +4,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <uses-feature
         android:name="android.hardware.camera"
@@ -59,6 +64,29 @@
             android:name=".ui.exercise.ExerciseLoggerActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <activity
+            android:name=".ui.notifications.NotificationSettingsActivity"
+            android:exported="false" />
+
+        <receiver
+            android:name=".notifications.ReminderReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.example.calories.action.REMINDER" />
+            </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".notifications.BootCompletedReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.TIME_CHANGED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

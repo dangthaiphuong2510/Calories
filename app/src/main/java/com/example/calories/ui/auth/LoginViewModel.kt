@@ -7,7 +7,9 @@ import com.example.calories.ui.common.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -69,6 +71,31 @@ class LoginViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
                 _events.send(UiEvent.Message(e.message ?: "Login failed"))
+            }
+        }
+    }
+
+    fun loginWithGoogle(idToken: String, rawNonce: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                supabase.auth.awaitInitialization()
+                supabase.auth.signInWith(IDToken) {
+                    this.idToken = idToken
+                    provider = Google
+                    nonce = rawNonce
+                }
+                if (supabase.auth.currentUserOrNull() == null) {
+                    _uiState.update { it.copy(isLoading = false) }
+                    _events.send(UiEvent.MessageRes(com.example.calories.R.string.google_sign_in_failed))
+                    return@launch
+                }
+                resolveDestination()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(isLoading = false) }
+                _events.send(
+                    UiEvent.Message(e.message ?: "Google sign-in failed"),
+                )
             }
         }
     }

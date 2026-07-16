@@ -38,11 +38,16 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:background="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
                 android:gravity="center"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="8dp"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                tools:text="15/07/2026" />
+                tools:text="Today, Jul 16" />
 
             <ImageButton
                 android:id="@+id/btnNextDate"
@@ -51,6 +56,16 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/next_day"
                 android:src="@drawable/ic_chevron_right_24"
+                app:tint="@color/text_primary" />
+
+            <ImageButton
+                android:id="@+id/btnNotifications"
+                android:layout_width="@dimen/home_icon_button_size"
+                android:layout_height="@dimen/home_icon_button_size"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/notification_settings_title"
+                android:src="@drawable/ic_notifications_24"
                 app:tint="@color/text_primary" />
         </LinearLayout>
 

@@ -2,6 +2,7 @@ package com.example.calories.ui.onboarding
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.calories.R
 import com.example.calories.data.repository.UserGoalsRepository
 import com.example.calories.model.UserGoal
 import com.example.calories.model.enums.ActivityLevel
@@ -23,6 +24,13 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 import javax.inject.Inject
 
+enum class OnboardingField {
+    AGE,
+    HEIGHT,
+    CURRENT_WEIGHT,
+    TARGET_WEIGHT,
+}
+
 data class OnboardingFormState(
     val existingGoalId: String? = null,
     val gender: Gender = Gender.MALE,
@@ -36,6 +44,11 @@ data class OnboardingFormState(
     val dailyCalories: Int = 0,
     val isLoading: Boolean = false,
     val isPrefillReady: Boolean = false,
+    val ageErrorRes: Int? = null,
+    val heightErrorRes: Int? = null,
+    val currentWeightErrorRes: Int? = null,
+    val targetWeightErrorRes: Int? = null,
+    val currentPage: Int = 0,
 )
 
 sealed interface OnboardingNavEvent {
@@ -96,6 +109,13 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
+    fun setCurrentPage(page: Int) {
+        _formState.update { it.copy(currentPage = page) }
+        if (page == OnboardingPagerAdapter.PAGE_PLAN) {
+            recalculate()
+        }
+    }
+
     fun updateGender(gender: Gender) {
         _formState.update { it.copy(gender = gender) }
         recalculate()
@@ -130,7 +150,73 @@ class OnboardingViewModel @Inject constructor(
         recalculate()
     }
 
+    fun clearFieldError(field: OnboardingField) {
+        _formState.update { state ->
+            when (field) {
+                OnboardingField.AGE -> state.copy(ageErrorRes = null)
+                OnboardingField.HEIGHT -> state.copy(heightErrorRes = null)
+                OnboardingField.CURRENT_WEIGHT -> state.copy(currentWeightErrorRes = null)
+                OnboardingField.TARGET_WEIGHT -> state.copy(targetWeightErrorRes = null)
+            }
+        }
+    }
+
+    fun validatePage(page: Int): Boolean {
+        val state = _formState.value
+        return when (page) {
+            OnboardingPagerAdapter.PAGE_BASIC -> {
+                val ageOk = state.age != null && state.age > 0
+                _formState.update {
+                    it.copy(ageErrorRes = if (ageOk) null else R.string.error_age_required)
+                }
+                ageOk
+            }
+            OnboardingPagerAdapter.PAGE_BODY -> {
+                val heightOk = state.heightCm != null && state.heightCm > 0
+                val weightOk = state.currentWeight != null && state.currentWeight > 0
+                _formState.update {
+                    it.copy(
+                        heightErrorRes = if (heightOk) null else R.string.error_height_required,
+                        currentWeightErrorRes =
+                            if (weightOk) null else R.string.error_current_weight_required,
+                    )
+                }
+                heightOk && weightOk
+            }
+            OnboardingPagerAdapter.PAGE_GOALS -> {
+                val targetOk = state.targetWeight != null && state.targetWeight > 0
+                _formState.update {
+                    it.copy(
+                        targetWeightErrorRes =
+                            if (targetOk) null else R.string.error_target_weight_required,
+                    )
+                }
+                if (targetOk) recalculate()
+                targetOk
+            }
+            OnboardingPagerAdapter.PAGE_PLAN -> {
+                recalculate()
+                val latest = _formState.value
+                val ready = latest.tdee > 0 &&
+                    latest.dailyCalories > 0 &&
+                    latest.age != null &&
+                    latest.heightCm != null &&
+                    latest.currentWeight != null &&
+                    latest.targetWeight != null
+                if (!ready) {
+                    viewModelScope.launch {
+                        _events.send(UiEvent.MessageRes(R.string.error_fill_all_fields))
+                    }
+                }
+                ready
+            }
+            else -> false
+        }
+    }
+
     fun saveGoals() {
+        if (!validatePage(OnboardingPagerAdapter.PAGE_PLAN)) return
+
         val state = _formState.value
         val userId = supabase.auth.currentUserOrNull()?.id
         val age = state.age
@@ -146,7 +232,7 @@ class OnboardingViewModel @Inject constructor(
             state.tdee == 0
         ) {
             viewModelScope.launch {
-                _events.send(UiEvent.Message("Please fill in all fields"))
+                _events.send(UiEvent.MessageRes(R.string.error_fill_all_fields))
             }
             return
         }
@@ -177,7 +263,7 @@ class OnboardingViewModel @Inject constructor(
         }
     }
 
-    private fun recalculate() {
+    fun recalculate() {
         val state = _formState.value
         val age = state.age
         val height = state.heightCm

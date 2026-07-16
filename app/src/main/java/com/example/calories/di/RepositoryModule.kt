@@ -8,6 +8,8 @@ import com.example.calories.data.repository.FridgeRepository
 import com.example.calories.data.repository.FridgeRepositoryImpl
 import com.example.calories.data.repository.ProfileRepository
 import com.example.calories.data.repository.ProfileRepositoryImpl
+import com.example.calories.data.repository.RecipeRepository
+import com.example.calories.data.repository.RecipeRepositoryImpl
 import com.example.calories.data.repository.UserGoalsRepository
 import com.example.calories.data.repository.UserGoalsRepositoryImpl
 import com.example.calories.data.repository.WaterRepository
@@ -51,4 +53,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProfileRepository(impl: ProfileRepositoryImpl): ProfileRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRecipeRepository(impl: RecipeRepositoryImpl): RecipeRepository
 }

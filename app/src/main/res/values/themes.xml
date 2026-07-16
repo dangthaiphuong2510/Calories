@@ -35,4 +35,14 @@
         <item name="iconSize">20dp</item>
         <item name="iconTint">@color/white</item>
     </style>
+
+    <style name="ThemeOverlay.Calories.MaterialCalendar" parent="@style/ThemeOverlay.Material3.MaterialCalendar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/white</item>
+    </style>
+
+    <style name="ShapeAppearance.Calories.Circle" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">50%</item>
+    </style>
 </resources>

@@ -7,14 +7,15 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
     android:background="@color/background"
-    android:orientation="vertical"
-    android:padding="16dp">
+    android:orientation="vertical">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:paddingHorizontal="16dp"
+        android:paddingTop="16dp">
 
         <ImageButton
             android:id="@+id/btnBack"
@@ -41,6 +42,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:layout_marginHorizontal="16dp"
         app:checkedButton="@+id/btnModePreset"
         app:selectionRequired="true"
         app:singleSelection="true">
@@ -51,7 +53,14 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/exercise_mode_preset" />
+            android:text="@string/exercise_mode_preset"
+
+
+        android:textColor="@color/selector_tab_text"
+        app:backgroundTint="@color/selector_tab_background"
+        app:strokeColor="@color/selector_tab_border"
+        app:strokeWidth="1dp" />
+
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnModeCustom"
@@ -59,7 +68,13 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/exercise_mode_custom" />
+            android:text="@string/exercise_mode_custom"
+
+        android:textColor="@color/selector_tab_text"
+        app:backgroundTint="@color/selector_tab_background"
+        app:strokeColor="@color/selector_tab_border"
+        app:strokeWidth="1dp" />
+
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <FrameLayout
@@ -72,7 +87,8 @@
             android:id="@+id/panelPreset"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical">
+            android:orientation="vertical"
+            android:paddingHorizontal="16dp">
 
             <com.google.android.material.textfield.TextInputLayout
                 android:layout_width="match_parent"
@@ -99,6 +115,7 @@
                 android:layout_height="0dp"
                 android:layout_marginTop="12dp"
                 android:layout_weight="1"
+                android:clipToPadding="false"
                 tools:listitem="@layout/item_preset_exercise" />
         </LinearLayout>
 
@@ -107,6 +124,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:orientation="vertical"
+            android:paddingHorizontal="16dp"
             android:visibility="gone">
 
             <com.google.android.material.textfield.TextInputLayout

@@ -101,4 +101,5 @@ sealed interface HomeNavEvent {
         val viewOnly: Boolean,
     ) : HomeNavEvent
     data object OpenExerciseLogger : HomeNavEvent
+    data object OpenNotificationSettings : HomeNavEvent
 }

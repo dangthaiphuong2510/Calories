@@ -24,7 +24,12 @@ import com.example.calories.ui.common.collectLatestStarted
 import com.example.calories.ui.exercise.ExerciseLoggerActivity
 import com.example.calories.ui.food.FoodDetailActivity
 import com.example.calories.ui.food.SearchFoodActivity
+import com.example.calories.ui.notifications.NotificationSettingsActivity
+import com.example.calories.util.DateTimeUtils
+import com.google.android.material.datepicker.MaterialDatePicker
 import dagger.hilt.android.AndroidEntryPoint
+import java.time.Instant
+import java.time.ZoneOffset
 
 @AndroidEntryPoint
 class HomeFragment : Fragment() {
@@ -73,6 +78,8 @@ class HomeFragment : Fragment() {
     private fun setupInteractions() {
         binding.btnPreviousDate.setOnClickListener { viewModel.previousDay() }
         binding.btnNextDate.setOnClickListener { viewModel.nextDay() }
+        binding.tvCurrentDate.setOnClickListener { showDatePicker() }
+        binding.btnNotifications.setOnClickListener { viewModel.onNotificationsClicked() }
 
         binding.sectionMeals.mealBreakfast.btnAddMealFood.setOnClickListener {
             viewModel.onAddMealClicked(MealType.BREAKFAST)
@@ -128,12 +135,45 @@ class HomeFragment : Fragment() {
                 is HomeNavEvent.OpenSearchFood -> openSearchFood(event.mealType)
                 is HomeNavEvent.OpenFoodDetail -> openFoodDetail(event)
                 HomeNavEvent.OpenExerciseLogger -> openExerciseLogger()
+                HomeNavEvent.OpenNotificationSettings -> openNotificationSettings()
             }
         }
     }
 
+    private fun showDatePicker() {
+        val current = viewModel.currentDate.value
+        val selection = current.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        val picker = MaterialDatePicker.Builder.datePicker()
+            .setTitleText(R.string.select_date)
+            .setSelection(selection)
+            .setTheme(R.style.ThemeOverlay_Calories_MaterialCalendar)
+            .build()
+        picker.addOnPositiveButtonClickListener { millis ->
+            val selected = Instant.ofEpochMilli(millis)
+                .atZone(ZoneOffset.UTC)
+                .toLocalDate()
+            viewModel.selectDate(selected)
+        }
+        picker.show(parentFragmentManager, "home_date_picker")
+    }
+
+    private fun openNotificationSettings() {
+        startActivity(Intent(requireContext(), NotificationSettingsActivity::class.java))
+    }
+
     private fun bindDateHeader(state: HomeUiState) {
-        binding.tvCurrentDate.text = state.currentDateLabel
+        val today = DateTimeUtils.today()
+        binding.tvCurrentDate.text = when (state.currentDate) {
+            today -> getString(
+                R.string.home_date_today_format,
+                DateTimeUtils.formatMonthDay(state.currentDate),
+            )
+            today.minusDays(1) -> getString(
+                R.string.home_date_yesterday_format,
+                DateTimeUtils.formatMonthDay(state.currentDate),
+            )
+            else -> state.currentDateLabel
+        }
     }
 
     private fun bindCalorieCard(state: HomeUiState) {

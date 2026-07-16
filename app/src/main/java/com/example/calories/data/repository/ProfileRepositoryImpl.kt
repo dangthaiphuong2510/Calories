@@ -26,6 +26,7 @@ class ProfileRepositoryImpl @Inject constructor(
     override suspend fun upsertProfile(
         displayName: String?,
         avatarUrl: String?,
+        updateAvatar: Boolean,
         gender: String?,
         birthDate: String?,
     ): Profile {
@@ -34,7 +35,7 @@ class ProfileRepositoryImpl @Inject constructor(
         val profile = Profile(
             id = userId,
             displayName = displayName ?: existing?.displayName,
-            avatarUrl = avatarUrl ?: existing?.avatarUrl,
+            avatarUrl = if (updateAvatar) avatarUrl else existing?.avatarUrl,
             gender = gender ?: existing?.gender,
             birthDate = birthDate ?: existing?.birthDate,
         )
