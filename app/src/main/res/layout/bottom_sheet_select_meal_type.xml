@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@color/background"
+    android:orientation="vertical"
+    android:paddingBottom="24dp">
+
+    <View
+        android:layout_width="36dp"
+        android:layout_height="4dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_bottom_sheet_handle" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/select_meal_type"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="20dp"
+        android:layout_marginBottom="8dp"
+        android:text="@string/select_meal_type_subtitle"
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp" />
+
+    <include
+        android:id="@+id/optionBreakfast"
+        layout="@layout/item_meal_type_option" />
+
+    <include
+        android:id="@+id/optionLunch"
+        layout="@layout/item_meal_type_option" />
+
+    <include
+        android:id="@+id/optionDinner"
+        layout="@layout/item_meal_type_option" />
+
+    <include
+        android:id="@+id/optionSnacks"
+        layout="@layout/item_meal_type_option" />
+</LinearLayout>

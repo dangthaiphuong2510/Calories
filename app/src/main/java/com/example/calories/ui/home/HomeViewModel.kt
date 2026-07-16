@@ -171,6 +171,19 @@ class HomeViewModel @Inject constructor(
         _currentDate.update { it.plusDays(1) }
     }
 
+    fun selectDate(date: LocalDate) {
+        if (date == _currentDate.value) return
+        _draftWeightKg.value = null
+        weightPersistJob?.cancel()
+        _currentDate.value = date
+    }
+
+    fun onNotificationsClicked() {
+        viewModelScope.launch {
+            _navEvents.send(HomeNavEvent.OpenNotificationSettings)
+        }
+    }
+
     fun refresh() {
         val id = userId ?: return
         viewModelScope.launch {
@@ -338,7 +351,7 @@ class HomeViewModel @Inject constructor(
 
         return HomeUiState(
             currentDate = date,
-            currentDateLabel = DateTimeUtils.formatDdMmYyyy(date),
+            currentDateLabel = DateTimeUtils.formatWeekdayMonthDay(date),
             dailyGoal = dailyGoal,
             totalEaten = dayFoods.sumOf { it.calories },
             totalBurned = exercises.sumOf { it.caloriesBurned.roundToInt() },

@@ -15,7 +15,7 @@
     <item
         android:id="@+id/nav_progress"
         android:icon="@drawable/ic_nav_progress"
-        android:title="@string/nav_progress" />
+        android:title="@string/nav_analytics" />
     <item
         android:id="@+id/nav_profile"
         android:icon="@drawable/ic_nav_profile"

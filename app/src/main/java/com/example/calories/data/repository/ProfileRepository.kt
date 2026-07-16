@@ -8,6 +8,7 @@ interface ProfileRepository {
     suspend fun upsertProfile(
         displayName: String? = null,
         avatarUrl: String? = null,
+        updateAvatar: Boolean = false,
         gender: String? = null,
         birthDate: String? = null,
     ): Profile

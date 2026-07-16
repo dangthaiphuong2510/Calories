@@ -11,6 +11,8 @@ object DateTimeUtils {
     private val zone: ZoneId = ZoneId.systemDefault()
     private val displayDate: DateTimeFormatter =
         DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.getDefault())
+    private val homeMonthDay: DateTimeFormatter =
+        DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
     private val shortDate: DateTimeFormatter =
         DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
     private val ddMmYyyy: DateTimeFormatter =
@@ -35,6 +37,10 @@ object DateTimeUtils {
     fun todayDisplay(): String = today().format(displayDate)
 
     fun formatDdMmYyyy(date: LocalDate): String = date.format(ddMmYyyy)
+
+    fun formatMonthDay(date: LocalDate): String = date.format(homeMonthDay)
+
+    fun formatWeekdayMonthDay(date: LocalDate): String = date.format(displayDate)
 
     fun atNoonIso(date: LocalDate): String =
         date.atTime(12, 0).atZone(zone).toInstant().toString()

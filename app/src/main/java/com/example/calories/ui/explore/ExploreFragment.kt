@@ -11,22 +11,19 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.calories.R
 import com.example.calories.databinding.FragmentExploreBinding
-import com.example.calories.model.ExploreKcalFilter
-import com.example.calories.model.FoodDictionaryItem
-import com.example.calories.model.enums.MealType
+import com.example.calories.model.ExploreRecipeFilter
+import com.example.calories.model.Recipe
 import com.example.calories.ui.common.BaseFragment
 import com.example.calories.ui.common.UiEvent
+import com.example.calories.ui.common.UiState
 import com.example.calories.ui.common.collectLatestStarted
-import com.example.calories.ui.food.FoodDetailActivity
-import com.example.calories.ui.food.FoodDictionaryAdapter
-import com.example.calories.util.DateTimeUtils
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class ExploreFragment : BaseFragment<FragmentExploreBinding>() {
 
     private val viewModel: ExploreViewModel by viewModels()
-    private val adapter = FoodDictionaryAdapter { item -> openFoodDetail(item) }
+    private val adapter = RecipeCardAdapter { recipe -> openRecipeDetail(recipe) }
 
     private var suppressQueryWatcher = false
 
@@ -52,17 +49,21 @@ class ExploreFragment : BaseFragment<FragmentExploreBinding>() {
     }
 
     private fun setupUi() {
-        binding.rvFoods.layoutManager = LinearLayoutManager(requireContext())
-        binding.rvFoods.adapter = adapter
+        binding.rvRecipes.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvRecipes.adapter = adapter
         binding.etSearch.addTextChangedListener(queryWatcher)
+        binding.btnRetry.setOnClickListener { viewModel.retry() }
 
-        binding.chipGroupKcalFilters.setOnCheckedStateChangeListener { _, checkedIds ->
+        binding.chipGroupFilters.setOnCheckedStateChangeListener { _, checkedIds ->
             val filter = when (checkedIds.firstOrNull()) {
-                R.id.chipKcalUnder200 -> ExploreKcalFilter.UNDER_200
-                R.id.chipKcal200400 -> ExploreKcalFilter.FROM_200_TO_400
-                R.id.chipKcal400600 -> ExploreKcalFilter.FROM_400_TO_600
-                R.id.chipKcalOver600 -> ExploreKcalFilter.OVER_600
-                else -> ExploreKcalFilter.ALL
+                R.id.chipKcalUnder200 -> ExploreRecipeFilter.UNDER_200
+                R.id.chipKcal200400 -> ExploreRecipeFilter.FROM_200_TO_400
+                R.id.chipKcal400600 -> ExploreRecipeFilter.FROM_400_TO_600
+                R.id.chipKcalOver600 -> ExploreRecipeFilter.OVER_600
+                R.id.chipHighProtein -> ExploreRecipeFilter.HIGH_PROTEIN
+                R.id.chipLowCarbs -> ExploreRecipeFilter.LOW_CARBS
+                R.id.chipLowFat -> ExploreRecipeFilter.LOW_FAT
+                else -> ExploreRecipeFilter.ALL
             }
             viewModel.onFilterSelected(filter)
         }
@@ -77,13 +78,29 @@ class ExploreFragment : BaseFragment<FragmentExploreBinding>() {
                 suppressQueryWatcher = false
             }
 
-            adapter.submitList(state.results)
-            binding.progressLoading.visibility =
-                if (state.isLoading) View.VISIBLE else View.GONE
-            binding.tvEmpty.visibility =
-                if (state.isEmpty && !state.isLoading) View.VISIBLE else View.GONE
-            binding.rvFoods.visibility =
-                if (state.isEmpty && !state.isLoading) View.GONE else View.VISIBLE
+            when (val recipesState = state.recipesState) {
+                is UiState.Loading -> {
+                    binding.progressLoading.visibility = View.VISIBLE
+                    binding.rvRecipes.visibility = View.GONE
+                    binding.tvEmpty.visibility = View.GONE
+                    binding.errorContainer.visibility = View.GONE
+                }
+                is UiState.Success -> {
+                    binding.progressLoading.visibility = View.GONE
+                    binding.errorContainer.visibility = View.GONE
+                    adapter.submitList(recipesState.data)
+                    val isEmpty = recipesState.data.isEmpty()
+                    binding.tvEmpty.visibility = if (isEmpty) View.VISIBLE else View.GONE
+                    binding.rvRecipes.visibility = if (isEmpty) View.GONE else View.VISIBLE
+                }
+                is UiState.Error -> {
+                    binding.progressLoading.visibility = View.GONE
+                    binding.rvRecipes.visibility = View.GONE
+                    binding.tvEmpty.visibility = View.GONE
+                    binding.errorContainer.visibility = View.VISIBLE
+                    binding.tvError.text = recipesState.message
+                }
+            }
         }
 
         viewLifecycleOwner.collectLatestStarted(viewModel.events) { event ->
@@ -96,20 +113,10 @@ class ExploreFragment : BaseFragment<FragmentExploreBinding>() {
         }
     }
 
-    private fun openFoodDetail(item: FoodDictionaryItem) {
-        startActivity(
-            FoodDetailActivity.intent(
-                context = requireContext(),
-                name = item.name,
-                calories = item.caloriesInt,
-                protein = item.proteinGrams,
-                carb = item.carbGrams,
-                fat = item.fatGrams,
-                servingGrams = 100.0,
-                mealType = MealType.SNACK,
-                selectedDate = DateTimeUtils.today(),
-                viewOnly = false,
-            ),
-        )
+    private fun openRecipeDetail(recipe: Recipe) {
+        parentFragmentManager.beginTransaction()
+            .replace(R.id.navHostFragment, RecipeDetailFragment.newInstance(recipe.id))
+            .addToBackStack("recipe_detail")
+            .commit()
     }
 }

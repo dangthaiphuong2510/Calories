@@ -2,11 +2,11 @@ package com.example.calories.ui.explore
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.calories.data.repository.FoodRepository
-import com.example.calories.model.ExploreKcalFilter
-import com.example.calories.model.FoodDictionaryItem
-import com.example.calories.model.FoodSearchFilter
+import com.example.calories.data.repository.RecipeRepository
+import com.example.calories.model.ExploreRecipeFilter
+import com.example.calories.model.Recipe
 import com.example.calories.ui.common.UiEvent
+import com.example.calories.ui.common.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
@@ -25,20 +25,21 @@ import javax.inject.Inject
 
 data class ExploreUiState(
     val query: String = "",
-    val selectedFilter: ExploreKcalFilter = ExploreKcalFilter.ALL,
-    val results: List<FoodDictionaryItem> = emptyList(),
-    val isLoading: Boolean = false,
-    val isEmpty: Boolean = false,
-)
+    val selectedFilter: ExploreRecipeFilter = ExploreRecipeFilter.ALL,
+    val recipesState: UiState<List<Recipe>> = UiState.Loading,
+) {
+    val isEmpty: Boolean
+        get() = recipesState is UiState.Success && recipesState.data.isEmpty()
+}
 
 @OptIn(FlowPreview::class)
 @HiltViewModel
 class ExploreViewModel @Inject constructor(
-    private val foodRepository: FoodRepository,
+    private val recipeRepository: RecipeRepository,
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
-    private val _selectedFilter = MutableStateFlow(ExploreKcalFilter.ALL)
+    private val _selectedFilter = MutableStateFlow(ExploreRecipeFilter.ALL)
 
     private val _uiState = MutableStateFlow(ExploreUiState())
     val uiState: StateFlow<ExploreUiState> = _uiState.asStateFlow()
@@ -57,9 +58,15 @@ class ExploreViewModel @Inject constructor(
         _uiState.update { it.copy(query = query) }
     }
 
-    fun onFilterSelected(filter: ExploreKcalFilter) {
+    fun onFilterSelected(filter: ExploreRecipeFilter) {
         _selectedFilter.value = filter
         _uiState.update { it.copy(selectedFilter = filter) }
+    }
+
+    fun retry() {
+        viewModelScope.launch {
+            loadRecipes(_query.value, _selectedFilter.value)
+        }
     }
 
     private fun observeSearchInputs() {
@@ -71,50 +78,38 @@ class ExploreViewModel @Inject constructor(
             ) { query, filter ->
                 query to filter
             }.collectLatest { (query, filter) ->
-                _uiState.update { it.copy(isLoading = true) }
-                val results = runCatching {
-                    loadResults(query = query, filter = filter)
-                }.getOrElse { emptyList() }
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        results = results,
-                        isEmpty = results.isEmpty(),
-                        query = query,
-                        selectedFilter = filter,
-                    )
-                }
+                loadRecipes(query, filter)
             }
         }
     }
 
-    private suspend fun loadResults(
-        query: String,
-        filter: ExploreKcalFilter,
-    ): List<FoodDictionaryItem> {
-        val dictionary = foodRepository.searchFoodDictionary(
-            query = query,
-            filter = FoodSearchFilter.ALL,
-            limit = SEARCH_LIMIT,
-        )
-        return applyKcalFilter(dictionary, filter)
-    }
-
-    private fun applyKcalFilter(
-        items: List<FoodDictionaryItem>,
-        filter: ExploreKcalFilter,
-    ): List<FoodDictionaryItem> {
-        return when (filter) {
-            ExploreKcalFilter.ALL -> items
-            ExploreKcalFilter.UNDER_200 -> items.filter { it.caloriesInt < 200 }
-            ExploreKcalFilter.FROM_200_TO_400 -> items.filter { it.caloriesInt in 200..400 }
-            ExploreKcalFilter.FROM_400_TO_600 -> items.filter { it.caloriesInt in 401..600 }
-            ExploreKcalFilter.OVER_600 -> items.filter { it.caloriesInt > 600 }
+    private suspend fun loadRecipes(query: String, filter: ExploreRecipeFilter) {
+        _uiState.update {
+            it.copy(
+                query = query,
+                selectedFilter = filter,
+                recipesState = UiState.Loading,
+            )
         }
+
+        recipeRepository.fetchRecipes(query = query, filter = filter)
+            .onSuccess { recipes ->
+                _uiState.update {
+                    it.copy(recipesState = UiState.Success(recipes))
+                }
+            }
+            .onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        recipesState = UiState.Error(
+                            error.message ?: "Could not load recipes",
+                        ),
+                    )
+                }
+            }
     }
 
     private companion object {
         const val DEBOUNCE_MS = 300L
-        const val SEARCH_LIMIT = 80
     }
 }
