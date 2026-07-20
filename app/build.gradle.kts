@@ -19,6 +19,16 @@ val localProperties = Properties().apply {
 fun localProp(key: String, default: String = ""): String =
     localProperties.getProperty(key)?.trim().orEmpty().ifEmpty { default }
 
+/** Strips quotes and duplicate `.apps.googleusercontent.com` suffixes from the Web Client ID. */
+fun sanitizeGoogleWebClientId(raw: String): String {
+    var value = raw.trim().trim('"').trim('\'')
+    val suffix = ".apps.googleusercontent.com"
+    while (value.endsWith("$suffix$suffix")) {
+        value = value.removeSuffix(suffix)
+    }
+    return value
+}
+
 android {
     namespace = "com.example.calories"
     compileSdk = 36
@@ -35,7 +45,7 @@ android {
         val supabaseUrl = localProp("SUPABASE_URL", "https://YOUR_PROJECT.supabase.co")
         val supabaseAnonKey = localProp("SUPABASE_ANON_KEY", "YOUR_ANON_KEY")
         val geminiApiKey = localProp("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
-        val googleWebClientId = localProp("GOOGLE_WEB_CLIENT_ID", "")
+        val googleWebClientId = sanitizeGoogleWebClientId(localProp("GOOGLE_WEB_CLIENT_ID", ""))
 
         buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
         buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
@@ -71,6 +81,8 @@ android {
 
 dependencies {
     implementation(libs.constraintlayout)
+
+    implementation(platform("io.ktor:ktor-bom:${libs.versions.ktor.get()}"))
     implementation(libs.supabase.postgrest)
     implementation(libs.supabase.auth)
     implementation(libs.supabase.realtime)
@@ -89,9 +101,11 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.mpandroidchart)
     implementation(libs.coil)
+
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+
     implementation(libs.androidx.camera.core)
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
@@ -99,6 +113,9 @@ dependencies {
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+
+    implementation("com.google.android.gms:play-services-ads:23.2.0")
+    implementation("com.google.guava:guava:33.3.1-android")
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

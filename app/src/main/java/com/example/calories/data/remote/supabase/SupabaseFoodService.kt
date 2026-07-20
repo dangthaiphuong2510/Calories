@@ -22,6 +22,7 @@ class SupabaseFoodService @Inject constructor(
         carb: Double,
         fat: Double,
         mealType: MealType,
+        servingGrams: Double = 100.0,
     ): FoodEntry {
         val userId = requireCurrentUserId()
         return supabase.from(TABLE_NAME)
@@ -34,6 +35,7 @@ class SupabaseFoodService @Inject constructor(
                     carb = carb,
                     fat = fat,
                     mealType = mealType,
+                    servingGrams = servingGrams,
                 ),
             ) {
                 select()

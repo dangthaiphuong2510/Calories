@@ -106,7 +106,7 @@ class FoodLogFragment : BaseFragment<FragmentFoodLogBinding>() {
                 protein = dialogBinding.etProtein.text?.toString()?.toDoubleOrNull() ?: 0.0,
                 carb = dialogBinding.etCarb.text?.toString()?.toDoubleOrNull() ?: 0.0,
                 fat = dialogBinding.etFat.text?.toString()?.toDoubleOrNull() ?: 0.0,
-                mealType = MealType.entries.getOrElse(mealIndex) { MealType.SNACK },
+                mealType = MealType.entries.getOrElse(mealIndex) { MealType.SNACKS },
             )
             dialog.dismiss()
         }

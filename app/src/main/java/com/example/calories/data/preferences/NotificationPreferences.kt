@@ -3,6 +3,9 @@ package com.example.calories.data.preferences
 import android.content.Context
 import android.content.SharedPreferences
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,6 +20,7 @@ data class NotificationSettings(
     val waterTimes: List<String> = listOf("08:00", "12:00", "16:00", "20:00"),
     val workoutRemindersEnabled: Boolean = false,
     val workoutTimes: List<String> = listOf("07:00"),
+    val intakeWarningsEnabled: Boolean = true,
 )
 
 @Singleton
@@ -25,6 +29,11 @@ class NotificationPreferences @Inject constructor(
 ) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    private val _intakeWarningsEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_INTAKE_WARNINGS_ENABLED, true),
+    )
+    val intakeWarningsEnabled: StateFlow<Boolean> = _intakeWarningsEnabled.asStateFlow()
 
     fun load(): NotificationSettings = NotificationSettings(
         mealRemindersEnabled = prefs.getBoolean(KEY_MEAL_ENABLED, true),
@@ -36,6 +45,7 @@ class NotificationPreferences @Inject constructor(
         waterTimes = readTimes(KEY_WATER_TIMES, DEFAULT_WATER_TIMES),
         workoutRemindersEnabled = prefs.getBoolean(KEY_WORKOUT_ENABLED, false),
         workoutTimes = readTimes(KEY_WORKOUT_TIMES, DEFAULT_WORKOUT_TIMES),
+        intakeWarningsEnabled = prefs.getBoolean(KEY_INTAKE_WARNINGS_ENABLED, true),
     )
 
     fun save(settings: NotificationSettings) {
@@ -49,8 +59,29 @@ class NotificationPreferences @Inject constructor(
             .putString(KEY_WATER_TIMES, toJson(settings.waterTimes))
             .putBoolean(KEY_WORKOUT_ENABLED, settings.workoutRemindersEnabled)
             .putString(KEY_WORKOUT_TIMES, toJson(settings.workoutTimes))
+            .putBoolean(KEY_INTAKE_WARNINGS_ENABLED, settings.intakeWarningsEnabled)
+            .apply()
+        _intakeWarningsEnabled.value = settings.intakeWarningsEnabled
+    }
+
+    fun wasWarnedToday(metricKey: String, today: String): Boolean {
+        return prefs.getString(warnKey(metricKey), null) == today
+    }
+
+    fun markWarnedToday(metricKey: String, today: String) {
+        prefs.edit().putString(warnKey(metricKey), today).apply()
+    }
+
+    fun clearIntakeWarningMarks() {
+        prefs.edit()
+            .remove(warnKey(METRIC_CALORIES))
+            .remove(warnKey(METRIC_PROTEIN))
+            .remove(warnKey(METRIC_CARBS))
+            .remove(warnKey(METRIC_FAT))
             .apply()
     }
+
+    private fun warnKey(metricKey: String): String = "${KEY_WARN_PREFIX}$metricKey"
 
     private fun readTimes(key: String, defaults: List<String>): List<String> {
         val raw = prefs.getString(key, null) ?: return defaults
@@ -81,6 +112,13 @@ class NotificationPreferences @Inject constructor(
         private const val KEY_WATER_TIMES = "water_times"
         private const val KEY_WORKOUT_ENABLED = "workout_enabled"
         private const val KEY_WORKOUT_TIMES = "workout_times"
+        private const val KEY_INTAKE_WARNINGS_ENABLED = "intake_warnings_enabled"
+        private const val KEY_WARN_PREFIX = "intake_warned_"
+
+        const val METRIC_CALORIES = "calories"
+        const val METRIC_PROTEIN = "protein"
+        const val METRIC_CARBS = "carbs"
+        const val METRIC_FAT = "fat"
 
         private val DEFAULT_WATER_TIMES = listOf("08:00", "12:00", "16:00", "20:00")
         private val DEFAULT_WORKOUT_TIMES = listOf("07:00")

@@ -20,10 +20,11 @@ interface FoodRepository {
         protein: Double = 0.0,
         carb: Double = 0.0,
         fat: Double = 0.0,
-        mealType: MealType = MealType.SNACK,
+        mealType: MealType = MealType.SNACKS,
         servingGrams: Double = 100.0,
         recordedAt: String = com.example.calories.util.DateTimeUtils.nowIso(),
     ): FoodEntry
+    suspend fun updateFoodEntry(foodEntry: FoodEntry): FoodEntry
     suspend fun deleteFoodEntry(id: String)
     /** Push local rows with `isDirty = true` to Supabase. */
     suspend fun fetchAndSync()

@@ -1,8 +1,18 @@
 package com.example.calories.ui.home
 
+import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.calories.R
+import com.example.calories.data.preferences.AppLanguage
+import com.example.calories.data.preferences.AppPreferences
+import com.example.calories.data.preferences.NotificationPreferences
+import com.example.calories.data.preferences.NotificationPreferences.Companion.METRIC_CALORIES
+import com.example.calories.data.preferences.NotificationPreferences.Companion.METRIC_CARBS
+import com.example.calories.data.preferences.NotificationPreferences.Companion.METRIC_FAT
+import com.example.calories.data.preferences.NotificationPreferences.Companion.METRIC_PROTEIN
+import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.data.repository.ExerciseRepository
 import com.example.calories.data.repository.FoodRepository
 import com.example.calories.data.repository.UserGoalsRepository
@@ -13,9 +23,14 @@ import com.example.calories.model.FoodEntry
 import com.example.calories.model.UserGoal
 import com.example.calories.model.WeightEntry
 import com.example.calories.model.enums.MealType
+import com.example.calories.notifications.ReminderIds
+import com.example.calories.notifications.ReminderScheduler
 import com.example.calories.ui.common.UiEvent
+import com.example.calories.util.CalorieCalculator
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.UnitConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +41,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -47,6 +63,10 @@ class HomeViewModel @Inject constructor(
     private val weightRepository: WeightRepository,
     private val exerciseRepository: ExerciseRepository,
     private val waterRepository: WaterRepository,
+    private val notificationPreferences: NotificationPreferences,
+    private val appPreferences: AppPreferences,
+    private val reminderScheduler: ReminderScheduler,
+    @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
     private val userId: String? get() = supabase.auth.currentUserOrNull()?.id
@@ -113,14 +133,23 @@ class HomeViewModel @Inject constructor(
         combine(_currentDate, remoteSnapshot, waterForDate) { date, remote, water ->
             Triple(date, remote, water)
         },
-        combine(exercisesForDate, _mealDetailsExpanded, _mealFeedback, _draftWeightKg) {
-                exercises, detailsExpanded, feedback, draftWeight ->
-            Quad(exercises, detailsExpanded, feedback, draftWeight)
+        combine(
+            exercisesForDate,
+            _mealDetailsExpanded,
+            _mealFeedback,
+            _draftWeightKg,
+            notificationPreferences.intakeWarningsEnabled,
+        ) { exercises, detailsExpanded, feedback, draftWeight, warningsEnabled ->
+            Quint(exercises, detailsExpanded, feedback, draftWeight, warningsEnabled)
         },
-    ) { dateRemoteWater, extras ->
+        combine(appPreferences.unitSystem, appPreferences.language) { unit, language ->
+            unit to language
+        },
+    ) { dateRemoteWater, extras, prefs ->
         val (date, remote, water) = dateRemoteWater
         val (foods, goal, weights) = remote
-        val (exercises, detailsExpanded, feedback, draftWeight) = extras
+        val (exercises, detailsExpanded, feedback, draftWeight, warningsEnabled) = extras
+        val (unitSystem, language) = prefs
         buildUiState(
             date = date,
             foods = foods,
@@ -131,10 +160,14 @@ class HomeViewModel @Inject constructor(
             mealDetailsExpanded = detailsExpanded,
             mealFeedback = feedback,
             draftWeightKg = draftWeight,
+            intakeWarningsEnabled = warningsEnabled,
+            unitSystem = unitSystem,
+            language = language,
         )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
+        // Stay hot while any tab is alive so Profile unit/language toggles re-emit immediately.
+        started = SharingStarted.Eagerly,
         initialValue = buildUiState(
             date = _currentDate.value,
             foods = emptyList(),
@@ -145,6 +178,9 @@ class HomeViewModel @Inject constructor(
             mealDetailsExpanded = false,
             mealFeedback = emptySet(),
             draftWeightKg = null,
+            intakeWarningsEnabled = notificationPreferences.intakeWarningsEnabled.value,
+            unitSystem = appPreferences.unitSystem.value,
+            language = appPreferences.language.value,
         ),
     )
 
@@ -157,6 +193,120 @@ class HomeViewModel @Inject constructor(
 
     init {
         refresh()
+        observeIntakeNotifications()
+    }
+
+    /**
+     * Watches [uiState] after it is built from food/goal data and runs intake checks
+     * only when calorie or macro totals change (not on unrelated UI updates).
+     */
+    private fun observeIntakeNotifications() {
+        viewModelScope.launch {
+            uiState
+                .distinctUntilChanged { old, new ->
+                    old.totalEaten == new.totalEaten &&
+                        old.dailyGoal == new.dailyGoal &&
+                        old.protein == new.protein &&
+                        old.carbs == new.carbs &&
+                        old.fat == new.fat &&
+                        old.intakeWarningsEnabled == new.intakeWarningsEnabled &&
+                        old.currentDate == new.currentDate
+                }
+                .collect { state -> checkAndNotify(state) }
+        }
+    }
+
+    private fun checkAndNotify(state: HomeUiState) {
+        if (!state.intakeWarningsEnabled) return
+        if (state.currentDate != DateTimeUtils.today()) return
+
+        val todayKey = state.currentDate.toString()
+        val title = appContext.getString(R.string.goal_exceeded_title)
+
+        maybeNotifyExceeded(
+            metricKey = METRIC_CALORIES,
+            label = "Calories",
+            currentGrams = state.totalEaten.toDouble(),
+            targetGrams = state.dailyGoal.toDouble(),
+            todayKey = todayKey,
+            notificationId = ReminderIds.INTAKE_CALORIES,
+            title = title,
+            message = appContext.getString(R.string.goal_exceeded_calorie_message),
+        )
+
+        maybeNotifyExceeded(
+            metricKey = METRIC_PROTEIN,
+            label = "Protein",
+            currentGrams = state.protein.currentGrams,
+            targetGrams = state.protein.targetGrams,
+            todayKey = todayKey,
+            notificationId = ReminderIds.INTAKE_PROTEIN,
+            title = title,
+            message = appContext.getString(
+                R.string.goal_exceeded_macro_message,
+                appContext.getString(R.string.protein),
+            ),
+        )
+
+        maybeNotifyExceeded(
+            metricKey = METRIC_CARBS,
+            label = "Carbs",
+            currentGrams = state.carbs.currentGrams,
+            targetGrams = state.carbs.targetGrams,
+            todayKey = todayKey,
+            notificationId = ReminderIds.INTAKE_CARBS,
+            title = title,
+            message = appContext.getString(
+                R.string.goal_exceeded_macro_message,
+                appContext.getString(R.string.carb),
+            ),
+        )
+
+        maybeNotifyExceeded(
+            metricKey = METRIC_FAT,
+            label = "Fat",
+            currentGrams = state.fat.currentGrams,
+            targetGrams = state.fat.targetGrams,
+            todayKey = todayKey,
+            notificationId = ReminderIds.INTAKE_FAT,
+            title = title,
+            message = appContext.getString(
+                R.string.goal_exceeded_macro_message,
+                appContext.getString(R.string.fat),
+            ),
+        )
+    }
+
+    private fun maybeNotifyExceeded(
+        metricKey: String,
+        label: String,
+        currentGrams: Double,
+        targetGrams: Double,
+        todayKey: String,
+        notificationId: Int,
+        title: String,
+        message: String,
+    ) {
+        val exceeded = targetGrams > 0 && currentGrams > targetGrams
+        val alreadyWarned = notificationPreferences.wasWarnedToday(metricKey, todayKey)
+        Log.d(
+            NOTIF_DEBUG_TAG,
+            "$label: current=$currentGrams target=$targetGrams exceeded=$exceeded alreadyWarned=$alreadyWarned",
+        )
+        if (!exceeded || alreadyWarned) return
+
+        Log.d(NOTIF_DEBUG_TAG, "$label limit exceeded — posting notification")
+        runCatching {
+            reminderScheduler.postNotification(
+                notificationId = notificationId,
+                title = title,
+                message = message,
+                channelId = ReminderScheduler.INTAKE_CHANNEL_ID,
+            )
+            notificationPreferences.markWarnedToday(metricKey, todayKey)
+        }.onFailure { error ->
+            Log.w(NOTIF_DEBUG_TAG, "Failed to post $label notification", error)
+        }
     }
 
     fun previousDay() {
@@ -214,6 +364,10 @@ class HomeViewModel @Inject constructor(
         _mealDetailsExpanded.update { !it }
     }
 
+    fun expandMealDetails() {
+        _mealDetailsExpanded.value = true
+    }
+
     fun onMealFoodClicked(food: MealFoodItem, mealType: MealType) {
         viewModelScope.launch {
             _navEvents.send(
@@ -226,7 +380,7 @@ class HomeViewModel @Inject constructor(
                     fat = food.fat,
                     servingGrams = food.servingGrams,
                     mealType = mealType,
-                    viewOnly = true,
+                    createdAt = food.createdAt,
                 ),
             )
         }
@@ -273,12 +427,20 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun adjustWeight(deltaKg: Double) {
-        val current = _draftWeightKg.value
+    /**
+     * @param deltaDisplay Step in the user's current unit system (0.1 kg or 0.1 lb).
+     * Persisted value is always kilograms.
+     */
+    fun adjustWeight(deltaDisplay: Double) {
+        val unit = uiState.value.unitSystem
+        val currentKg = _draftWeightKg.value
             ?: uiState.value.todayWeightKg
             ?: DEFAULT_WEIGHT_KG
-        val next = ((current + deltaKg) * 10.0).let { round(it) / 10.0 }.coerceAtLeast(20.0)
-        _draftWeightKg.value = next
+        val currentDisplay = UnitConverter.weightToDisplay(currentKg, unit)
+        val nextDisplay = ((currentDisplay + deltaDisplay) * 10.0)
+            .let { round(it) / 10.0 }
+            .coerceAtLeast(UnitConverter.weightToDisplay(MIN_WEIGHT_KG, unit))
+        _draftWeightKg.value = UnitConverter.weightFromDisplay(nextDisplay, unit)
 
         weightPersistJob?.cancel()
         weightPersistJob = viewModelScope.launch {
@@ -321,10 +483,13 @@ class HomeViewModel @Inject constructor(
         mealDetailsExpanded: Boolean,
         mealFeedback: Set<MealType>,
         draftWeightKg: Double?,
+        intakeWarningsEnabled: Boolean,
+        unitSystem: UnitSystem,
+        language: AppLanguage,
     ): HomeUiState {
         val dayFoods = foods.filter { DateTimeUtils.isSameDay(it.createdAt, date) }
         val dailyGoal = goal?.dailyCalories ?: 0
-        val macroTargets = macroTargetsFor(dailyGoal)
+        val macroTargets = CalorieCalculator.macroTargetsFor(dailyGoal)
         val dayWeight = draftWeightKg ?: resolveWeightForDate(weights, goal, date)
 
         fun section(type: MealType, titleRes: Int): MealSection {
@@ -339,6 +504,7 @@ class HomeViewModel @Inject constructor(
                         protein = entry.protein,
                         carb = entry.carb,
                         fat = entry.fat,
+                        createdAt = entry.createdAt,
                     )
                 }
             return MealSection(
@@ -360,24 +526,25 @@ class HomeViewModel @Inject constructor(
             waterStepMl = WATER_STEP_ML,
             protein = MacroProgress(
                 currentGrams = dayFoods.sumOf { it.protein },
-                targetGrams = macroTargets.protein,
+                targetGrams = macroTargets.proteinGrams,
             ),
             carbs = MacroProgress(
                 currentGrams = dayFoods.sumOf { it.carb },
-                targetGrams = macroTargets.carbs,
+                targetGrams = macroTargets.carbsGrams,
             ),
             fat = MacroProgress(
                 currentGrams = dayFoods.sumOf { it.fat },
-                targetGrams = macroTargets.fat,
+                targetGrams = macroTargets.fatGrams,
             ),
             fiber = MacroProgress(
                 currentGrams = 0.0,
-                targetGrams = macroTargets.fiber,
+                targetGrams = macroTargets.fiberGrams,
             ),
+            intakeWarningsEnabled = intakeWarningsEnabled,
             breakfast = section(MealType.BREAKFAST, R.string.meal_breakfast),
             lunch = section(MealType.LUNCH, R.string.meal_lunch),
             dinner = section(MealType.DINNER, R.string.meal_dinner),
-            snacks = section(MealType.SNACK, R.string.meal_snacks),
+            snacks = section(MealType.SNACKS, R.string.meal_snacks),
             exercises = exercises.map {
                 ExerciseLogItem(
                     id = it.id,
@@ -386,6 +553,8 @@ class HomeViewModel @Inject constructor(
                 )
             },
             todayWeightKg = dayWeight,
+            unitSystem = unitSystem,
+            language = language,
             mealDetailsExpanded = mealDetailsExpanded,
         )
     }
@@ -412,32 +581,21 @@ class HomeViewModel @Inject constructor(
         return goal?.currentWeight?.takeIf { it > 0.0 }
     }
 
-    private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
-    private data class MacroTargets(
-        val protein: Double,
-        val carbs: Double,
-        val fat: Double,
-        val fiber: Double,
+    private data class Quint<A, B, C, D, E>(
+        val first: A,
+        val second: B,
+        val third: C,
+        val fourth: D,
+        val fifth: E,
     )
 
-    private fun macroTargetsFor(dailyGoal: Int): MacroTargets {
-        if (dailyGoal <= 0) {
-            return MacroTargets(0.0, 0.0, 0.0, 0.0)
-        }
-        return MacroTargets(
-            protein = dailyGoal * 0.30 / 4.0,
-            carbs = dailyGoal * 0.40 / 4.0,
-            fat = dailyGoal * 0.30 / 9.0,
-            fiber = 30.0,
-        )
-    }
-
     private companion object {
+        const val NOTIF_DEBUG_TAG = "NOTIF_DEBUG"
         const val WATER_GOAL_ML = 2000
         const val WATER_STEP_ML = 250
         const val FEEDBACK_DURATION_MS = 1_500L
         const val WEIGHT_PERSIST_DEBOUNCE_MS = 450L
         const val DEFAULT_WEIGHT_KG = 60.0
+        const val MIN_WEIGHT_KG = 20.0
     }
 }

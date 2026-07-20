@@ -7,7 +7,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import com.example.calories.R
+import com.example.calories.ui.MainActivity
 import com.example.calories.data.preferences.NotificationSettings
 import com.example.calories.model.enums.MealType
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -109,7 +112,7 @@ class ReminderScheduler @Inject constructor(
         scheduleMeal(ReminderIds.MEAL_BREAKFAST, MealType.BREAKFAST, settings.breakfastTime)
         scheduleMeal(ReminderIds.MEAL_LUNCH, MealType.LUNCH, settings.lunchTime)
         scheduleMeal(ReminderIds.MEAL_DINNER, MealType.DINNER, settings.dinnerTime)
-        scheduleMeal(ReminderIds.MEAL_SNACKS, MealType.SNACK, settings.snacksTime)
+        scheduleMeal(ReminderIds.MEAL_SNACKS, MealType.SNACKS, settings.snacksTime)
     }
 
     fun syncWaterAlarms(settings: NotificationSettings) {
@@ -192,10 +195,63 @@ class ReminderScheduler @Inject constructor(
         MealType.BREAKFAST -> R.string.meal_breakfast
         MealType.LUNCH -> R.string.meal_lunch
         MealType.DINNER -> R.string.meal_dinner
-        MealType.SNACK -> R.string.meal_snacks
+        MealType.SNACKS -> R.string.meal_snacks
+    }
+
+    fun ensureIntakeWarningChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        val channel = NotificationChannel(
+            INTAKE_CHANNEL_ID,
+            context.getString(R.string.intake_warning_channel_name),
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = context.getString(R.string.intake_warning_channel_description)
+            enableVibration(true)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    /**
+     * Shared notification poster used by scheduled reminders (water, meals) and
+     * immediate intake-threshold alerts.
+     */
+    fun postNotification(
+        notificationId: Int,
+        title: String,
+        message: String,
+        channelId: String = CHANNEL_ID,
+    ) {
+        when (channelId) {
+            INTAKE_CHANNEL_ID -> ensureIntakeWarningChannel()
+            else -> ensureChannel()
+        }
+
+        val contentIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            Intent(context, MainActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
+        val notification = NotificationCompat.Builder(context, channelId)
+            .setSmallIcon(R.drawable.ic_notifications_24)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .build()
+
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
     }
 
     companion object {
         const val CHANNEL_ID = "calories_reminders"
+        const val INTAKE_CHANNEL_ID = "calories_intake_warnings"
     }
 }

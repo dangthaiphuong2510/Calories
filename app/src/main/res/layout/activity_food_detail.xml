@@ -6,7 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="@color/background"
+    android:background="?android:attr/colorBackground"
     android:fillViewport="true">
 
     <LinearLayout
@@ -61,6 +61,7 @@
             tools:text="165 kcal" />
 
         <LinearLayout
+            android:id="@+id/groupMacroPills"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
@@ -101,6 +102,110 @@
                 android:textColor="@color/white"
                 android:textSize="12sp"
                 tools:text="F 3g" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/groupEditNutrients"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilCalories"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/calories"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCalories"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:inputType="number"
+                    android:maxLines="1"
+                    tools:text="165" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilProtein"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/protein"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:suffixText="g">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etProtein"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:inputType="numberDecimal"
+                    android:maxLines="1"
+                    tools:text="31" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilCarb"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/carb"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:suffixText="g">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etCarb"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:inputType="numberDecimal"
+                    android:maxLines="1"
+                    tools:text="0" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tilFat"
+                style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/fat"
+                app:boxCornerRadiusBottomEnd="12dp"
+                app:boxCornerRadiusBottomStart="12dp"
+                app:boxCornerRadiusTopEnd="12dp"
+                app:boxCornerRadiusTopStart="12dp"
+                app:suffixText="g">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/etFat"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:enabled="false"
+                    android:focusable="false"
+                    android:inputType="numberDecimal"
+                    android:maxLines="1"
+                    tools:text="3" />
+            </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
         <TextView
@@ -160,9 +265,20 @@
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:layout_marginTop="20dp"
-            android:layout_marginBottom="16dp"
             android:backgroundTint="@color/primary"
             android:text="@string/log_food"
             app:cornerRadius="12dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveChanges"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="16dp"
+            android:backgroundTint="@color/primary"
+            android:text="@string/save_changes"
+            android:visibility="gone"
+            app:cornerRadius="12dp"
+            tools:visibility="visible" />
     </LinearLayout>
 </androidx.core.widget.NestedScrollView>

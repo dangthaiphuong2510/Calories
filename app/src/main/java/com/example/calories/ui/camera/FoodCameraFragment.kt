@@ -2,6 +2,7 @@ package com.example.calories.ui.camera
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,10 +15,13 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import com.example.calories.R
+import com.example.calories.ads.ScanInterstitialAdHelper
 import com.example.calories.databinding.FragmentFoodCameraBinding
+import com.example.calories.model.FoodAnalysisResult
 import com.example.calories.ui.common.BaseFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
@@ -35,7 +39,16 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
     private val viewModel: FoodCameraViewModel by viewModels()
 
     private var imageCapture: ImageCapture? = null
+    private var lensFacing = CameraSelector.LENS_FACING_BACK
     private lateinit var cameraExecutor: ExecutorService
+    private var scanInterstitialAdHelper: ScanInterstitialAdHelper? = null
+    private var pendingResultNavigation: Pair<String, FoodAnalysisResult>? = null
+
+    private val galleryLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent(),
+    ) { uri ->
+        uri?.let(::handleGalleryImage)
+    }
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -57,9 +70,12 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         cameraExecutor = Executors.newSingleThreadExecutor()
+        scanInterstitialAdHelper = ScanInterstitialAdHelper(requireActivity())
 
         binding.btnCloseCamera.setOnClickListener { parentFragmentManager.popBackStack() }
         binding.fabCapture.setOnClickListener { capturePhoto() }
+        binding.fabGallery.setOnClickListener { galleryLauncher.launch("image/*") }
+        binding.fabFlipCamera.setOnClickListener { flipCamera() }
         observeViewModel()
 
         when {
@@ -72,12 +88,17 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
     }
 
     private fun observeViewModel() {
-        viewLifecycleOwner.collectLatestStarted(viewModel.isAnalyzing) { analyzing ->
-            binding.progressAnalyzing.visibility = if (analyzing) View.VISIBLE else View.GONE
-            binding.fabCapture.isEnabled = !analyzing
-            binding.tvCameraHint.text = getString(
-                if (analyzing) R.string.analyzing_food else R.string.camera_hint,
-            )
+        viewLifecycleOwner.collectLatestStarted(viewModel.uiState) { state ->
+            val busy = state.isAnalyzing
+            binding.progressAnalyzing.isVisible = busy
+            binding.fabCapture.isEnabled = !busy
+            binding.fabGallery.isEnabled = !busy
+            binding.fabFlipCamera.isEnabled = !busy
+            binding.tvCameraHint.text = if (busy) {
+                getString(R.string.analyzing_food)
+            } else {
+                getString(R.string.camera_hint)
+            }
         }
         viewLifecycleOwner.collectLatestStarted(viewModel.events) { event ->
             when (event) {
@@ -89,17 +110,42 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
         }
         viewLifecycleOwner.collectLatestStarted(viewModel.navEvents) { event ->
             when (event) {
-                is FoodCameraNavEvent.ToResult -> {
-                    parentFragmentManager.beginTransaction()
-                        .replace(
-                            R.id.navHostFragment,
-                            FoodAnalysisResultFragment.newInstance(event.result),
-                        )
-                        .addToBackStack("food_analysis")
-                        .commit()
-                }
+                is FoodCameraNavEvent.AnalysisReady -> showInterstitialThenNavigate(event)
             }
         }
+    }
+
+    /**
+     * Analysis is complete — load the interstitial first, show it only on [onAdLoaded],
+     * and navigate to the food detail screen from [onAdDismissedFullScreenContent].
+     */
+    private fun showInterstitialThenNavigate(event: FoodCameraNavEvent.AnalysisReady) {
+        if (pendingResultNavigation != null) return
+
+        pendingResultNavigation = event.imagePath to event.result
+        val helper = scanInterstitialAdHelper ?: return navigateToFoodDetail()
+
+        helper.loadAndShow(
+            onAdDismissed = ::navigateToFoodDetail,
+            onAdUnavailable = ::navigateToFoodDetail,
+        )
+    }
+
+    private fun navigateToFoodDetail() {
+        val pending = pendingResultNavigation ?: return
+        pendingResultNavigation = null
+        viewModel.onAnalysisFlowComplete()
+
+        parentFragmentManager.beginTransaction()
+            .replace(
+                R.id.navHostFragment,
+                FoodAnalysisResultFragment.newInstance(
+                    imagePath = pending.first,
+                    analysisResult = pending.second,
+                ),
+            )
+            .addToBackStack("food_analysis")
+            .commit()
     }
 
     private fun startCamera() {
@@ -113,11 +159,14 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
                 imageCapture = ImageCapture.Builder()
                     .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
                     .build()
+                val cameraSelector = CameraSelector.Builder()
+                    .requireLensFacing(lensFacing)
+                    .build()
                 try {
                     cameraProvider.unbindAll()
                     cameraProvider.bindToLifecycle(
                         viewLifecycleOwner,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        cameraSelector,
                         preview,
                         imageCapture,
                     )
@@ -127,6 +176,44 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
             },
             ContextCompat.getMainExecutor(requireContext()),
         )
+    }
+
+    private fun flipCamera() {
+        lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
+            CameraSelector.LENS_FACING_FRONT
+        } else {
+            CameraSelector.LENS_FACING_BACK
+        }
+        startCamera()
+    }
+
+    private fun handleGalleryImage(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val imageFile = withContext(Dispatchers.IO) {
+                copyUriToCache(uri)
+            }
+            if (imageFile != null) {
+                viewModel.openAnalysis(imageFile.absolutePath)
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.error_load_gallery_image,
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+        }
+    }
+
+    private fun copyUriToCache(uri: Uri): File? {
+        return try {
+            val cacheFile = File(requireContext().cacheDir, "gallery_${System.currentTimeMillis()}.jpg")
+            requireContext().contentResolver.openInputStream(uri)?.use { input ->
+                cacheFile.outputStream().use { output -> input.copyTo(output) }
+            } ?: return null
+            cacheFile
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun capturePhoto() {
@@ -140,8 +227,7 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
                     viewLifecycleOwner.lifecycleScope.launch {
-                        val bytes = withContext(Dispatchers.IO) { photoFile.readBytes() }
-                        viewModel.analyzeImage(bytes)
+                        viewModel.openAnalysis(photoFile.absolutePath)
                     }
                 }
 
@@ -155,6 +241,9 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
     }
 
     override fun onDestroyView() {
+        scanInterstitialAdHelper?.destroy()
+        scanInterstitialAdHelper = null
+        pendingResultNavigation = null
         if (::cameraExecutor.isInitialized) {
             cameraExecutor.shutdown()
         }

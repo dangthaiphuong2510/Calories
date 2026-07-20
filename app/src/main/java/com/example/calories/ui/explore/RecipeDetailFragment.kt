@@ -221,7 +221,7 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
             labelRes = R.string.meal_snacks,
         ) {
             dialog.dismiss()
-            viewModel.addToMeal(MealType.SNACK)
+            viewModel.addToMeal(MealType.SNACKS)
         }
 
         dialog.show()

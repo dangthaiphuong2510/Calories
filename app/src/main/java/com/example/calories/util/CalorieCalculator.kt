@@ -38,4 +38,31 @@ object CalorieCalculator {
             GoalType.MAINTAIN -> tdee
         }
     }
+
+    data class MacroTargets(
+        val proteinGrams: Double,
+        val carbsGrams: Double,
+        val fatGrams: Double,
+        val fiberGrams: Double = DEFAULT_FIBER_GRAMS,
+    )
+
+    fun macroTargetsFor(dailyCalories: Int): MacroTargets {
+        if (dailyCalories <= 0) {
+            return MacroTargets(0.0, 0.0, 0.0, 0.0)
+        }
+        return MacroTargets(
+            proteinGrams = dailyCalories * PROTEIN_RATIO / KCAL_PER_PROTEIN_GRAM,
+            carbsGrams = dailyCalories * CARB_RATIO / KCAL_PER_CARB_GRAM,
+            fatGrams = dailyCalories * FAT_RATIO / KCAL_PER_FAT_GRAM,
+            fiberGrams = DEFAULT_FIBER_GRAMS,
+        )
+    }
+
+    private const val PROTEIN_RATIO = 0.30
+    private const val CARB_RATIO = 0.40
+    private const val FAT_RATIO = 0.30
+    private const val KCAL_PER_PROTEIN_GRAM = 4.0
+    private const val KCAL_PER_CARB_GRAM = 4.0
+    private const val KCAL_PER_FAT_GRAM = 9.0
+    private const val DEFAULT_FIBER_GRAMS = 30.0
 }

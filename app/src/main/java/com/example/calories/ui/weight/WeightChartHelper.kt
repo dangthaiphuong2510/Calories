@@ -1,8 +1,10 @@
 package com.example.calories.ui.weight
 
 import android.graphics.Color
+import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.model.WeightEntry
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.UnitConverter
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.components.XAxis
 import com.github.mikephil.charting.data.Entry
@@ -12,7 +14,13 @@ import com.github.mikephil.charting.formatter.ValueFormatter
 
 object WeightChartHelper {
 
-    fun bind(chart: LineChart, entries: List<WeightEntry>, primaryColor: Int) {
+    fun bind(
+        chart: LineChart,
+        entries: List<WeightEntry>,
+        primaryColor: Int,
+        unitSystem: UnitSystem = UnitSystem.METRIC,
+        seriesLabel: String = "Weight",
+    ) {
         if (entries.isEmpty()) {
             chart.clear()
             chart.setNoDataText("No weight data yet")
@@ -22,11 +30,14 @@ object WeightChartHelper {
 
         val chronological = entries.sortedBy { it.recordedAt }
         val points = chronological.mapIndexed { index, item ->
-            Entry(index.toFloat(), item.weightKg.toFloat())
+            Entry(
+                index.toFloat(),
+                UnitConverter.weightToDisplay(item.weightKg, unitSystem).toFloat(),
+            )
         }
         val labels = chronological.map { DateTimeUtils.formatChartLabel(it.recordedAt) }
 
-        val dataSet = LineDataSet(points, "Weight (kg)").apply {
+        val dataSet = LineDataSet(points, seriesLabel).apply {
             color = primaryColor
             setCircleColor(primaryColor)
             lineWidth = 2.5f

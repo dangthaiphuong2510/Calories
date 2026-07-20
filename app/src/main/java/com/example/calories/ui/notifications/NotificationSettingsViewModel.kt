@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.calories.data.preferences.NotificationPreferences
 import com.example.calories.data.preferences.NotificationSettings
 import com.example.calories.model.enums.MealType
+import com.example.calories.notifications.IntakeThresholdMonitor
 import com.example.calories.notifications.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -26,12 +27,14 @@ data class NotificationSettingsUiState(
     val waterTimes: List<String> = emptyList(),
     val workoutRemindersEnabled: Boolean = false,
     val workoutTimes: List<String> = emptyList(),
+    val intakeWarningsEnabled: Boolean = true,
 )
 
 @HiltViewModel
 class NotificationSettingsViewModel @Inject constructor(
     private val preferences: NotificationPreferences,
     private val reminderScheduler: ReminderScheduler,
+    private val intakeThresholdMonitor: IntakeThresholdMonitor,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotificationSettingsUiState())
@@ -66,6 +69,17 @@ class NotificationSettingsViewModel @Inject constructor(
         )
     }
 
+    fun setIntakeWarningsEnabled(enabled: Boolean) {
+        if (!enabled) {
+            preferences.clearIntakeWarningMarks()
+            intakeThresholdMonitor.cancelIntakeNotifications()
+        }
+        updateAndPersist(
+            transform = { it.copy(intakeWarningsEnabled = enabled) },
+            sync = { },
+        )
+    }
+
     fun setMealTime(mealType: MealType, time: String) {
         updateAndPersist(
             transform = { state ->
@@ -73,7 +87,7 @@ class NotificationSettingsViewModel @Inject constructor(
                     MealType.BREAKFAST -> state.copy(breakfastTime = time)
                     MealType.LUNCH -> state.copy(lunchTime = time)
                     MealType.DINNER -> state.copy(dinnerTime = time)
-                    MealType.SNACK -> state.copy(snacksTime = time)
+                    MealType.SNACKS -> state.copy(snacksTime = time)
                 }
             },
             sync = { reminderScheduler.syncMealAlarms(it) },
@@ -172,6 +186,7 @@ class NotificationSettingsViewModel @Inject constructor(
         waterTimes = waterTimes,
         workoutRemindersEnabled = workoutRemindersEnabled,
         workoutTimes = workoutTimes,
+        intakeWarningsEnabled = intakeWarningsEnabled,
     )
 
     private fun NotificationSettingsUiState.toSettings() = NotificationSettings(
@@ -184,5 +199,6 @@ class NotificationSettingsViewModel @Inject constructor(
         waterTimes = waterTimes,
         workoutRemindersEnabled = workoutRemindersEnabled,
         workoutTimes = workoutTimes,
+        intakeWarningsEnabled = intakeWarningsEnabled,
     )
 }

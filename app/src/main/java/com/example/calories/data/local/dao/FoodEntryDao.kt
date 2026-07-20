@@ -30,11 +30,26 @@ interface FoodEntryDao {
     )
     fun observeTodayCalories(userId: String, startOfDay: String, startOfTomorrow: String): Flow<Int>
 
+    @Query(
+        """
+        SELECT * FROM food_entries
+        WHERE userId = :userId AND createdAt >= :startOfDay AND createdAt < :startOfTomorrow
+        """
+    )
+    suspend fun getForDay(
+        userId: String,
+        startOfDay: String,
+        startOfTomorrow: String,
+    ): List<FoodEntryEntity>
+
     @Query("SELECT * FROM food_entries WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): FoodEntryEntity?
 
     @Query("SELECT * FROM food_entries WHERE userId = :userId AND isDirty = 1")
     suspend fun getDirty(userId: String): List<FoodEntryEntity>
+
+    @Query("SELECT * FROM food_entries WHERE userId = :userId")
+    suspend fun getAll(userId: String): List<FoodEntryEntity>
 
     @Upsert
     suspend fun upsert(entry: FoodEntryEntity)

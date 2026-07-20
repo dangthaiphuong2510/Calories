@@ -1,16 +1,23 @@
 package com.example.calories.ui
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
+import androidx.lifecycle.Lifecycle
 import com.example.calories.R
+import com.example.calories.data.preferences.NotificationPreferences
 import com.example.calories.databinding.ActivityMainBinding
 import com.example.calories.ui.auth.LoginActivity
 import com.example.calories.ui.camera.FoodCameraFragment
@@ -20,12 +27,29 @@ import com.example.calories.ui.profile.ProfileFragment
 import com.example.calories.ui.weight.WeightTrackingFragment
 import com.google.android.material.navigation.NavigationBarView
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+/**
+ * Hosts bottom-nav tabs with show/hide (not replace) so each tab's ViewModel stays
+ * alive and keeps collecting [com.example.calories.data.preferences.AppPreferences]
+ * StateFlows — unit/language changes on Profile re-emit Home/Analytics uiState immediately.
+ */
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
+
+    @Inject lateinit var notificationPreferences: NotificationPreferences
+
+    private var activeTabTag: String = TAG_HOME
+
+    /** Prevents programmatic [BottomNavigationView.selectedItemId] from re-entering the listener. */
+    private var suppressBottomNavSelection = false
+
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { /* User can grant later from notification settings */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,12 +73,31 @@ class MainActivity : AppCompatActivity() {
             insets
         }
 
+        activeTabTag = savedInstanceState?.getString(STATE_ACTIVE_TAB) ?: TAG_HOME
+
         setupBottomNavigation()
         alignCenterCameraTab()
+        requestIntakeWarningPermissionIfNeeded()
+
+        supportFragmentManager.addOnBackStackChangedListener {
+            if (supportFragmentManager.backStackEntryCount == 0) {
+                // Camera popped — reveal the active tab again.
+                showTab(tag = activeTabTag, updateBottomNav = false)
+            }
+        }
 
         if (savedInstanceState == null) {
-            binding.bottomNav.selectedItemId = R.id.nav_home
+            showTab(TAG_HOME, updateBottomNav = false)
+            selectBottomNavItem(TAG_HOME)
+        } else {
+            showTab(activeTabTag, updateBottomNav = false)
+            selectBottomNavItem(activeTabTag)
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putString(STATE_ACTIVE_TAB, activeTabTag)
     }
 
     private fun setupBottomNavigation() {
@@ -63,6 +106,8 @@ class MainActivity : AppCompatActivity() {
         binding.bottomNav.labelVisibilityMode = NavigationBarView.LABEL_VISIBILITY_LABELED
 
         binding.bottomNav.setOnItemSelectedListener { item ->
+            if (suppressBottomNavSelection) return@setOnItemSelectedListener true
+
             when (item.itemId) {
                 R.id.navigation_camera -> {
                     openCameraAi()
@@ -73,13 +118,93 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_progress,
                 R.id.nav_profile,
                     -> {
-                    supportFragmentManager.popBackStack(null, FragmentManager.POP_BACK_STACK_INCLUSIVE)
-                    openFragment(fragmentFor(item.itemId))
+                    val tag = tagFor(item.itemId)
+                    // User tap already updated selection; skip if we're already on this tab.
+                    if (tag == activeTabTag && isTabVisible(tag)) {
+                        return@setOnItemSelectedListener true
+                    }
+                    supportFragmentManager.popBackStack(
+                        CAMERA_BACK_STACK,
+                        FragmentManager.POP_BACK_STACK_INCLUSIVE,
+                    )
+                    // Do not update bottom nav here — the listener fired because the user selected it.
+                    showTab(tag, updateBottomNav = false)
                     true
                 }
                 else -> false
             }
         }
+    }
+
+    private fun showTab(tag: String, updateBottomNav: Boolean = true) {
+        if (tag == activeTabTag && isTabVisible(tag)) {
+            if (updateBottomNav) selectBottomNavItem(tag)
+            return
+        }
+
+        activeTabTag = tag
+        val fm = supportFragmentManager
+        val transaction = fm.beginTransaction()
+
+        TAB_TAGS.forEach { tabTag ->
+            fm.findFragmentByTag(tabTag)?.let { fragment ->
+                if (tabTag == tag) {
+                    transaction.show(fragment)
+                    transaction.setMaxLifecycle(fragment, Lifecycle.State.RESUMED)
+                } else {
+                    transaction.hide(fragment)
+                    transaction.setMaxLifecycle(fragment, Lifecycle.State.STARTED)
+                }
+            }
+        }
+
+        // Hide camera overlay if it is somehow still present without a back stack.
+        fm.findFragmentByTag(TAG_CAMERA)?.let { transaction.hide(it) }
+
+        if (fm.findFragmentByTag(tag) == null) {
+            transaction.add(R.id.navHostFragment, createTabFragment(tag), tag)
+        }
+
+        transaction.commit()
+
+        if (updateBottomNav) {
+            selectBottomNavItem(tag)
+        }
+    }
+
+    private fun selectBottomNavItem(tag: String) {
+        val menuId = menuIdForTag(tag)
+        if (binding.bottomNav.selectedItemId == menuId) return
+        suppressBottomNavSelection = true
+        try {
+            binding.bottomNav.selectedItemId = menuId
+        } finally {
+            suppressBottomNavSelection = false
+        }
+    }
+
+    private fun isTabVisible(tag: String): Boolean =
+        supportFragmentManager.findFragmentByTag(tag)?.isVisible == true
+
+    private fun createTabFragment(tag: String): Fragment = when (tag) {
+        TAG_EXPLORE -> ExploreFragment()
+        TAG_PROGRESS -> WeightTrackingFragment()
+        TAG_PROFILE -> ProfileFragment()
+        else -> HomeFragment()
+    }
+
+    private fun tagFor(menuItemId: Int): String = when (menuItemId) {
+        R.id.navigation_explore -> TAG_EXPLORE
+        R.id.nav_progress -> TAG_PROGRESS
+        R.id.nav_profile -> TAG_PROFILE
+        else -> TAG_HOME
+    }
+
+    private fun menuIdForTag(tag: String): Int = when (tag) {
+        TAG_EXPLORE -> R.id.navigation_explore
+        TAG_PROGRESS -> R.id.nav_progress
+        TAG_PROFILE -> R.id.nav_profile
+        else -> R.id.nav_home
     }
 
     private fun alignCenterCameraTab() {
@@ -107,30 +232,53 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun fragmentFor(itemId: Int): Fragment = when (itemId) {
-        R.id.navigation_explore -> ExploreFragment()
-        R.id.nav_progress -> WeightTrackingFragment()
-        R.id.nav_profile -> ProfileFragment()
-        else -> HomeFragment()
-    }
-
-    private fun openFragment(fragment: Fragment) {
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.navHostFragment, fragment)
-            .commit()
-    }
-
     private fun openCameraAi() {
-        val existing = supportFragmentManager.findFragmentById(R.id.navHostFragment)
-        if (existing is FoodCameraFragment) return
+        val fm = supportFragmentManager
+        if (fm.findFragmentByTag(TAG_CAMERA) != null && fm.backStackEntryCount > 0) return
 
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.navHostFragment, FoodCameraFragment())
+        val transaction = fm.beginTransaction()
+        TAB_TAGS.forEach { tabTag ->
+            fm.findFragmentByTag(tabTag)?.let { fragment ->
+                transaction.hide(fragment)
+                transaction.setMaxLifecycle(fragment, Lifecycle.State.STARTED)
+            }
+        }
+        transaction
+            .add(R.id.navHostFragment, FoodCameraFragment(), TAG_CAMERA)
             .addToBackStack(CAMERA_BACK_STACK)
             .commit()
     }
 
+    fun navigateToHome() {
+        supportFragmentManager.popBackStack(
+            CAMERA_BACK_STACK,
+            FragmentManager.POP_BACK_STACK_INCLUSIVE,
+        )
+        supportFragmentManager.executePendingTransactions()
+        showTab(TAG_HOME)
+    }
+
+    private fun requestIntakeWarningPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (!notificationPreferences.intakeWarningsEnabled.value) return
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS,
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     private companion object {
         const val CAMERA_BACK_STACK = "camera_ai"
+        const val STATE_ACTIVE_TAB = "state_active_tab"
+        const val TAG_HOME = "tab_home"
+        const val TAG_EXPLORE = "tab_explore"
+        const val TAG_PROGRESS = "tab_progress"
+        const val TAG_PROFILE = "tab_profile"
+        const val TAG_CAMERA = "tab_camera"
+        val TAB_TAGS = listOf(TAG_HOME, TAG_EXPLORE, TAG_PROGRESS, TAG_PROFILE)
     }
 }

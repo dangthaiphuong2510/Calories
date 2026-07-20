@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="?android:attr/colorBackground"
     android:fillViewport="true">
 
     <LinearLayout
@@ -51,7 +51,7 @@
             android:layout_width="match_parent"
             android:layout_height="220dp"
             android:layout_marginTop="8dp"
-            android:background="@color/surface"
+            android:background="?attr/colorSurface"
             android:contentDescription="@null"
             android:scaleType="centerCrop"
             tools:src="@drawable/ic_food_placeholder_24" />

@@ -28,6 +28,14 @@
     <string name="unit_system">Hệ đơn vị</string>
     <string name="unit_metric">Mét (kg, cm)</string>
     <string name="unit_imperial">Anh (lbs, ft)</string>
+    <string name="weight_placeholder_kg">— kg</string>
+    <string name="weight_placeholder_lb">— lb</string>
+    <string name="portion_size_oz">Khẩu phần (oz)</string>
+    <string name="weight_lb">Cân nặng (lb)</string>
+    <string name="weight_chart_metric">Cân nặng (kg)</string>
+    <string name="weight_chart_imperial">Cân nặng (lb)</string>
+    <string name="weight_kg_value">%1$.1f kg</string>
+    <string name="weight_lb_value">%1$.1f lb</string>
     <string name="theme_mode">Giao diện</string>
     <string name="theme_light">Sáng</string>
     <string name="theme_dark">Tối</string>
@@ -61,4 +69,40 @@
     <string name="nav_analytics">Thống kê</string>
     <string name="save">Lưu</string>
     <string name="cancel">Hủy</string>
+
+    <!-- Home / meals -->
+    <string name="meal_breakfast">Bữa sáng</string>
+    <string name="meal_lunch">Bữa trưa</string>
+    <string name="meal_dinner">Bữa tối</string>
+    <string name="meal_snack">Ăn vặt</string>
+    <string name="meal_snacks">Ăn vặt</string>
+    <string name="protein">Đạm</string>
+    <string name="carb">Tinh bột</string>
+    <string name="fat">Chất béo</string>
+    <string name="calories">Calo</string>
+    <string name="water_title">Nước</string>
+    <string name="today_weight_hint">Cân nặng hôm nay (kg)</string>
+    <string name="weight_kg_format">%1$.1f kg</string>
+    <string name="portion_size_g">Khẩu phần (g)</string>
+    <string name="log_food">Ghi món</string>
+    <string name="select_date">Chọn ngày</string>
+
+    <!-- Progress / Analytics -->
+    <string name="progress_dashboard_title">Thống kê &amp; Tiến độ</string>
+    <string name="weight_progress">Tiến độ cân nặng</string>
+    <string name="log_weight">Ghi cân nặng</string>
+    <string name="weight_kg">Cân nặng (kg)</string>
+    <string name="weight_history">Lịch sử</string>
+    <string name="empty_weight">Chưa có dữ liệu cân nặng</string>
+    <string name="weight_chart">Xu hướng</string>
+    <string name="current_weight_label">Hiện tại</string>
+    <string name="target_weight_label">Mục tiêu</string>
+    <string name="nutrition_statistics">Thống kê dinh dưỡng</string>
+    <string name="nutrition_period_day">Ngày</string>
+    <string name="nutrition_period_week">Tuần</string>
+    <string name="calorie_intake_vs_burned">Calo nạp vs. tiêu hao</string>
+    <string name="macro_distribution">Phân bố macro</string>
+    <string name="weekly_macro_distribution">Phân bố macro tuần</string>
+    <string name="legend_calories_consumed">Đã nạp</string>
+    <string name="legend_calories_burned">Đã đốt</string>
 </resources>

@@ -93,17 +93,49 @@ class FoodRepositoryImpl @Inject constructor(
         )
         foodEntryDao.upsert(entry.toEntity(isDirty = true, syncedAt = null))
 
-        try {
+        val savedEntry = try {
+            Log.d(
+                TAG,
+                "Upserting food_entries id=${entry.id}, meal_type=${entry.mealType.name}, " +
+                    "serving_grams=${entry.servingGrams}, calories=${entry.calories}",
+            )
             val remoteEntry = supabase.from(TABLE_NAME)
                 .upsert(entry) {
                     select()
                 }
                 .decodeSingle<FoodEntry>()
             foodEntryDao.upsert(remoteEntry.toEntity(isDirty = false))
-            return remoteEntry
+            remoteEntry
         } catch (e: Exception) {
             Log.e(TAG, "Failed to sync new food entry to Supabase", e)
-            return entry
+            entry
+        }
+
+        return savedEntry
+    }
+
+    override suspend fun updateFoodEntry(foodEntry: FoodEntry): FoodEntry {
+        val userId = requireCurrentUserId()
+        val entry = foodEntry.copy(userId = userId)
+        foodEntryDao.upsert(entry.toEntity(isDirty = true, syncedAt = null))
+
+        return try {
+            Log.d(
+                TAG,
+                "Updating food_entries id=${entry.id}, calories=${entry.calories}, " +
+                    "protein=${entry.protein}, carb=${entry.carb}, fat=${entry.fat}, " +
+                    "serving_grams=${entry.servingGrams}",
+            )
+            val remoteEntry = supabase.from(TABLE_NAME)
+                .upsert(entry) {
+                    select()
+                }
+                .decodeSingle<FoodEntry>()
+            foodEntryDao.upsert(remoteEntry.toEntity(isDirty = false))
+            remoteEntry
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update food entry remotely id=${entry.id}", e)
+            entry
         }
     }
 
@@ -134,8 +166,14 @@ class FoodRepositoryImpl @Inject constructor(
 
             for (entity in dirty) {
                 try {
+                    val entry = entity.toDomain()
+                    Log.d(
+                        TAG,
+                        "Retrying food_entries id=${entry.id}, meal_type=${entry.mealType.name}, " +
+                            "serving_grams=${entry.servingGrams}, calories=${entry.calories}",
+                    )
                     val remoteEntry = supabase.from(TABLE_NAME)
-                        .upsert(entity.toDomain()) {
+                        .upsert(entry) {
                             select()
                         }
                         .decodeSingle<FoodEntry>()
@@ -162,19 +200,19 @@ class FoodRepositoryImpl @Inject constructor(
                 .decodeList<FoodEntry>()
 
             val dirtyIds = foodEntryDao.getDirty(userId).map { it.id }.toSet()
-            if (dirtyIds.isEmpty()) {
-                foodEntryDao.clearAndInsert(
-                    userId = userId,
-                    entries = remoteEntries.map { it.toEntity(isDirty = false) },
-                )
-            } else {
-                foodEntryDao.deleteSyncedForUser(userId)
-                foodEntryDao.upsertAll(
-                    remoteEntries
-                        .filter { it.id !in dirtyIds }
-                        .map { it.toEntity(isDirty = false) },
-                )
-            }
+            val remoteIds = remoteEntries.map { it.id }.toSet()
+
+            // Merge remote into local. Never clearAndInsert — that races with a just-saved
+            // entry whose Supabase row may not appear in SELECT yet and would wipe Home UI.
+            foodEntryDao.upsertAll(
+                remoteEntries
+                    .filter { it.id !in dirtyIds }
+                    .map { it.toEntity(isDirty = false) },
+            )
+
+            foodEntryDao.getAll(userId)
+                .filter { !it.isDirty && it.id !in remoteIds }
+                .forEach { foodEntryDao.deleteById(it.id) }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh food entries from Supabase", e)
         }

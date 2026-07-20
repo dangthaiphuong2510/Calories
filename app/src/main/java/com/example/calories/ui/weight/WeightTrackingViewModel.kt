@@ -2,6 +2,9 @@ package com.example.calories.ui.weight
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.calories.data.preferences.AppLanguage
+import com.example.calories.data.preferences.AppPreferences
+import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.data.repository.ExerciseRepository
 import com.example.calories.data.repository.FoodRepository
 import com.example.calories.data.repository.UserGoalsRepository
@@ -11,6 +14,7 @@ import com.example.calories.model.FoodEntry
 import com.example.calories.model.WeightEntry
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.UnitConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -66,6 +70,8 @@ data class WeightUiState(
     val periodLabel: String = "",
     val calorieTrend: List<DailyCaloriePoint> = emptyList(),
     val macroDistribution: MacroDistributionUi = MacroDistributionUi(),
+    val unitSystem: UnitSystem = UnitSystem.METRIC,
+    val language: AppLanguage = AppLanguage.ENGLISH,
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -76,6 +82,7 @@ class WeightTrackingViewModel @Inject constructor(
     private val userGoalsRepository: UserGoalsRepository,
     private val foodRepository: FoodRepository,
     private val exerciseRepository: ExerciseRepository,
+    private val appPreferences: AppPreferences,
 ) : ViewModel() {
 
     private val userId: String? get() = supabase.auth.currentUserOrNull()?.id
@@ -92,7 +99,12 @@ class WeightTrackingViewModel @Inject constructor(
     val uiState: StateFlow<WeightUiState> = flowOf(userId)
         .flatMapLatest { id ->
             if (id == null) {
-                flowOf(WeightUiState())
+                combine(
+                    appPreferences.unitSystem,
+                    appPreferences.language,
+                ) { unit, language ->
+                    WeightUiState(unitSystem = unit, language = language)
+                }
             } else {
                 combine(
                     weightRepository.observeWeightEntries(id),
@@ -104,11 +116,17 @@ class WeightTrackingViewModel @Inject constructor(
                 }.combine(_nutritionPeriod) { source, period ->
                     source to period
                 }.combine(_selectedDate) { (source, period), date ->
-                    buildUiState(source, period, date)
+                    Triple(source, period, date)
+                }.combine(
+                    combine(appPreferences.unitSystem, appPreferences.language) { u, l -> u to l },
+                ) { triple, prefs ->
+                    val (source, period, date) = triple
+                    val (unit, language) = prefs
+                    buildUiState(source, period, date, unit, language)
                 }
             }
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUiState())
+        .stateIn(viewModelScope, SharingStarted.Eagerly, WeightUiState())
 
     init {
         refresh()
@@ -132,7 +150,12 @@ class WeightTrackingViewModel @Inject constructor(
         }
     }
 
-    fun addWeight(weightKg: Double) {
+    /** @param weightDisplay Value entered in the active unit system; stored as kg. */
+    fun addWeight(weightDisplay: Double) {
+        val weightKg = UnitConverter.weightFromDisplay(
+            weightDisplay,
+            appPreferences.unitSystem.value,
+        )
         viewModelScope.launch {
             try {
                 weightRepository.upsertWeightForDate(
@@ -157,6 +180,8 @@ class WeightTrackingViewModel @Inject constructor(
         source: NutritionSourceData,
         period: NutritionPeriod,
         selectedDate: LocalDate,
+        unitSystem: UnitSystem,
+        language: AppLanguage,
     ): WeightUiState {
         val chronological = source.weightEntries.sortedBy { it.recordedAt }
         val days = daysForPeriod(period, selectedDate)
@@ -170,6 +195,8 @@ class WeightTrackingViewModel @Inject constructor(
             periodLabel = formatPeriodLabel(period, days),
             calorieTrend = buildCalorieTrend(source.foods, source.exercises, days),
             macroDistribution = buildMacroDistribution(source.foods, period, days),
+            unitSystem = unitSystem,
+            language = language,
         )
     }
 

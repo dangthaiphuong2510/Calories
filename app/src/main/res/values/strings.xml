@@ -120,13 +120,17 @@
     <string name="meal_reminders_title">Meal Reminders</string>
     <string name="water_reminders_title">Water Reminders</string>
     <string name="workout_reminders_title">Workout Reminders</string>
+    <string name="intake_warnings_title">Intake Warnings</string>
+    <string name="intake_warnings_subtitle">Notify me when I exceed my daily calorie or macro targets</string>
     <string name="water_schedule_title">Water Schedule</string>
     <string name="workout_schedule_title">Workout Schedule</string>
     <string name="add_reminder_time">Add reminder time</string>
     <string name="remove_reminder_time">Remove reminder time</string>
     <string name="select_reminder_time">Select time</string>
     <string name="reminder_channel_name">Reminders</string>
-    <string name="reminder_channel_description">Meal, water, and workout reminders</string>
+    <string name="reminder_channel_description">Meal, water, workout, and intake reminders</string>
+    <string name="intake_warning_channel_name">Intake warnings</string>
+    <string name="intake_warning_channel_description">Alerts when you reach your daily calorie or macro targets</string>
     <string name="reminder_generic_message">You have a reminder</string>
     <string name="reminder_meal_title">%1$s reminder</string>
     <string name="reminder_meal_message">Time to log your %1$s</string>
@@ -134,6 +138,9 @@
     <string name="reminder_water_message">Time to drink some water</string>
     <string name="reminder_workout_title">Workout reminder</string>
     <string name="reminder_workout_message">Time for your workout</string>
+    <string name="goal_exceeded_title">Goal Exceeded</string>
+    <string name="goal_exceeded_calorie_message">You have exceeded your Calorie limit for today.</string>
+    <string name="goal_exceeded_macro_message">You have exceeded your %1$s limit for today.</string>
     <string name="notification_permission_required">Notifications permission is required to show reminders. Please allow notifications and try again.</string>
     <string name="exact_alarm_permission_required">Exact alarm permission is required for reliable reminders. Please allow alarms and reminders for this app.</string>
     <string name="exact_alarm_permission_prompt">Allow alarms and reminders for Calories so meal and water alerts fire on time.</string>
@@ -195,8 +202,11 @@
     <string name="hide_meal_details">Hide meal details</string>
     <string name="log_food_quick">Enter meals</string>
     <string name="log_food">Log food</string>
+    <string name="save_changes">Save Changes</string>
+    <string name="food_updated_success">Food updated successfully</string>
     <string name="remove_food">Remove food</string>
     <string name="portion_size_g">Portion size (g)</string>
+    <string name="invalid_portion_size">Portion size must be greater than 0</string>
     <string name="calorie_burn_equivalents">Exercise equivalent</string>
     <string name="burn_walk_format">Walk: %1$d mins</string>
     <string name="burn_run_format">Run: %1$d mins</string>
@@ -231,6 +241,12 @@
     <string name="macro_grams_format">%1$.0fg</string>
     <string name="macros_line_format">P %1$.0fg · C %2$.0fg · F %3$.0fg</string>
     <string name="weight_kg_format">%1$.1f kg</string>
+    <string name="weight_placeholder_kg">— kg</string>
+    <string name="weight_placeholder_lb">— lb</string>
+    <string name="portion_size_oz">Portion size (oz)</string>
+    <string name="weight_lb">Weight (lb)</string>
+    <string name="weight_chart_metric">Weight (kg)</string>
+    <string name="weight_chart_imperial">Weight (lb)</string>
     <string name="quantity_unit_format">%1$.1f %2$s</string>
     <string name="expiry_format">Exp %1$s</string>
     <string name="error_add_food">Could not add food</string>
@@ -252,13 +268,20 @@
     <!-- Camera -->
     <string name="camera_hint">Point at your meal and tap capture</string>
     <string name="capture_photo">Capture</string>
+    <string name="pick_from_gallery">Pick from gallery</string>
+    <string name="flip_camera">Flip camera</string>
     <string name="camera_permission_required">Camera permission is required to scan food</string>
+    <string name="error_load_gallery_image">Could not load the selected image</string>
     <string name="analysis_result_title">Meal detected</string>
     <string name="analysis_result_subtitle">Review and save to your food log</string>
     <string name="save_to_food_log">Save to food log</string>
     <string name="retake_photo">Retake photo</string>
     <string name="error_analyze_food">Could not analyze this photo</string>
     <string name="analyzing_food">Analyzing meal…</string>
+    <string name="grams_value">%1$d g</string>
+    <string name="grams_value_decimal">%1$.1f g</string>
+    <string name="no_ingredients_detected">No ingredients detected</string>
+    <string name="edit_meal_details">Edit details</string>
 
     <!-- Fridge -->
     <string name="my_fridge">My fridge</string>
