@@ -27,11 +27,18 @@ sealed class GoogleSignInException(message: String, cause: Throwable? = null) : 
 
 object GoogleSignInHelper {
 
+    const val APPLICATION_PACKAGE = "com.example.calories"
+    private const val WEB_CLIENT_ID_SUFFIX = ".apps.googleusercontent.com"
+
     suspend fun signIn(
         activity: Activity,
         webClientId: String,
     ): GoogleIdTokenResult {
-        if (webClientId.isBlank()) throw GoogleSignInException.NotConfigured()
+        val normalizedClientId = normalizeWebClientId(webClientId)
+        if (normalizedClientId.isBlank()) throw GoogleSignInException.NotConfigured()
+        if (!normalizedClientId.endsWith(WEB_CLIENT_ID_SUFFIX)) {
+            throw GoogleSignInException.Failed("invalid_web_client_id")
+        }
 
         val credentialManager = CredentialManager.create(activity)
         val rawNonce = UUID.randomUUID().toString()
@@ -41,7 +48,7 @@ object GoogleSignInHelper {
             requestGoogleIdToken(
                 activity = activity,
                 credentialManager = credentialManager,
-                webClientId = webClientId,
+                webClientId = normalizedClientId,
                 hashedNonce = hashedNonce,
                 rawNonce = rawNonce,
                 filterAuthorized = true,
@@ -51,7 +58,7 @@ object GoogleSignInHelper {
                 requestGoogleIdToken(
                     activity = activity,
                     credentialManager = credentialManager,
-                    webClientId = webClientId,
+                    webClientId = normalizedClientId,
                     hashedNonce = hashedNonce,
                     rawNonce = rawNonce,
                     filterAuthorized = false,
@@ -60,7 +67,7 @@ object GoogleSignInHelper {
                 requestSignInButtonToken(
                     activity = activity,
                     credentialManager = credentialManager,
-                    webClientId = webClientId,
+                    webClientId = normalizedClientId,
                     hashedNonce = hashedNonce,
                     rawNonce = rawNonce,
                 )
@@ -71,11 +78,19 @@ object GoogleSignInHelper {
             requestSignInButtonToken(
                 activity = activity,
                 credentialManager = credentialManager,
-                webClientId = webClientId,
+                webClientId = normalizedClientId,
                 hashedNonce = hashedNonce,
                 rawNonce = rawNonce,
             )
         }
+    }
+
+    private fun normalizeWebClientId(raw: String): String {
+        var value = raw.trim().trim('"').trim('\'')
+        while (value.endsWith("$WEB_CLIENT_ID_SUFFIX$WEB_CLIENT_ID_SUFFIX")) {
+            value = value.removeSuffix(WEB_CLIENT_ID_SUFFIX)
+        }
+        return value
     }
 
     private suspend fun requestGoogleIdToken(

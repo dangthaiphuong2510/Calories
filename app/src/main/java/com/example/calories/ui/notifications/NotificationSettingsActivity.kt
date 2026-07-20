@@ -105,6 +105,9 @@ class NotificationSettingsActivity : AppCompatActivity() {
         binding.switchWorkoutReminders.setOnCheckedChangeListener { _, checked ->
             onMasterSwitchChanged(ReminderGroup.WORKOUT, checked)
         }
+        binding.switchIntakeWarnings.setOnCheckedChangeListener { _, checked ->
+            onMasterSwitchChanged(ReminderGroup.INTAKE, checked)
+        }
 
         binding.rowBreakfast.tvMealTime.setOnClickListener {
             pickMealTime(MealType.BREAKFAST, binding.rowBreakfast.tvMealTime.text?.toString())
@@ -116,7 +119,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
             pickMealTime(MealType.DINNER, binding.rowDinner.tvMealTime.text?.toString())
         }
         binding.rowSnacks.tvMealTime.setOnClickListener {
-            pickMealTime(MealType.SNACK, binding.rowSnacks.tvMealTime.text?.toString())
+            pickMealTime(MealType.SNACKS, binding.rowSnacks.tvMealTime.text?.toString())
         }
 
         binding.rvWaterTimes.layoutManager = LinearLayoutManager(this)
@@ -138,6 +141,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
             binding.switchMealReminders.isChecked = state.mealRemindersEnabled
             binding.switchWaterReminders.isChecked = state.waterRemindersEnabled
             binding.switchWorkoutReminders.isChecked = state.workoutRemindersEnabled
+            binding.switchIntakeWarnings.isChecked = state.intakeWarningsEnabled
             suppressSwitchCallbacks = false
 
             binding.mealRemindersContent.visibility =
@@ -178,7 +182,8 @@ class NotificationSettingsActivity : AppCompatActivity() {
     }
 
     private fun continueEnableAfterNotificationPermission(group: ReminderGroup) {
-        if (!reminderScheduler.canScheduleExactAlarms()) {
+        // Intake warnings are posted immediately after food logging — no exact alarm needed.
+        if (group != ReminderGroup.INTAKE && !reminderScheduler.canScheduleExactAlarms()) {
             pendingEnableGroup = group
             openExactAlarmSettings()
             return
@@ -192,6 +197,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
             ReminderGroup.MEAL -> viewModel.setMealRemindersEnabled(true)
             ReminderGroup.WATER -> viewModel.setWaterRemindersEnabled(true)
             ReminderGroup.WORKOUT -> viewModel.setWorkoutRemindersEnabled(true)
+            ReminderGroup.INTAKE -> viewModel.setIntakeWarningsEnabled(true)
         }
     }
 
@@ -200,6 +206,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
             ReminderGroup.MEAL -> viewModel.setMealRemindersEnabled(false)
             ReminderGroup.WATER -> viewModel.setWaterRemindersEnabled(false)
             ReminderGroup.WORKOUT -> viewModel.setWorkoutRemindersEnabled(false)
+            ReminderGroup.INTAKE -> viewModel.setIntakeWarningsEnabled(false)
         }
     }
 
@@ -223,6 +230,7 @@ class NotificationSettingsActivity : AppCompatActivity() {
         ReminderGroup.MEAL -> binding.switchMealReminders
         ReminderGroup.WATER -> binding.switchWaterReminders
         ReminderGroup.WORKOUT -> binding.switchWorkoutReminders
+        ReminderGroup.INTAKE -> binding.switchIntakeWarnings
     }
 
     private fun hasPostNotificationsPermission(): Boolean {
@@ -293,5 +301,6 @@ class NotificationSettingsActivity : AppCompatActivity() {
         MEAL,
         WATER,
         WORKOUT,
+        INTAKE,
     }
 }

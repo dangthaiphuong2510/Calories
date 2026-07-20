@@ -322,9 +322,13 @@ class ProfileFragment : Fragment() {
         MaterialAlertDialogBuilder(requireContext())
             .setTitle(R.string.language)
             .setSingleChoiceItems(options, current) { dialog, which ->
-                viewModel.setLanguage(
-                    if (which == 0) AppLanguage.ENGLISH else AppLanguage.VIETNAMESE,
-                )
+                val selected =
+                    if (which == 0) AppLanguage.ENGLISH else AppLanguage.VIETNAMESE
+                if (selected != viewModel.uiState.value.language) {
+                    viewModel.setLanguage(selected)
+                    // Recreate so layout @string resources and getString() pick up the new locale.
+                    requireActivity().recreate()
+                }
                 dialog.dismiss()
             }
             .setNegativeButton(R.string.cancel, null)

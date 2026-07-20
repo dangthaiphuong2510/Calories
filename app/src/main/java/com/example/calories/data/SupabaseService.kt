@@ -2,6 +2,7 @@ package com.example.calories.data
 
 import com.example.calories.model.FoodEntry
 import com.example.calories.model.FoodEntryInsert
+import com.example.calories.model.enums.MealType
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
@@ -17,7 +18,18 @@ class SupabaseService(
         val userId = requireCurrentUserId()
 
         return supabase.from(TABLE_NAME)
-            .insert(FoodEntryInsert(userId = userId, name = name, calories = calories)) {
+            .insert(
+                FoodEntryInsert(
+                    userId = userId,
+                    name = name,
+                    calories = calories,
+                    protein = 0.0,
+                    carb = 0.0,
+                    fat = 0.0,
+                    mealType = MealType.SNACKS,
+                    servingGrams = 100.0,
+                ),
+            ) {
                 select()
             }
             .decodeSingle<FoodEntry>()

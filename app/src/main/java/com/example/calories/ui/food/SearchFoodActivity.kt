@@ -58,7 +58,7 @@ class SearchFoodActivity : AppCompatActivity() {
 
         val mealType = intent.getStringExtra(EXTRA_MEAL_TYPE)
             ?.let { runCatching { MealType.valueOf(it) }.getOrNull() }
-            ?: MealType.SNACK
+            ?: MealType.SNACKS
         val selectedDate = intent.getStringExtra(EXTRA_SELECTED_DATE)
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?: DateTimeUtils.today()
@@ -150,7 +150,6 @@ class SearchFoodActivity : AppCompatActivity() {
                 servingGrams = 100.0,
                 mealType = state.mealType,
                 selectedDate = state.selectedDate,
-                viewOnly = false,
             ),
         )
     }
@@ -159,7 +158,7 @@ class SearchFoodActivity : AppCompatActivity() {
         MealType.BREAKFAST -> R.string.meal_breakfast
         MealType.LUNCH -> R.string.meal_lunch
         MealType.DINNER -> R.string.meal_dinner
-        MealType.SNACK -> R.string.meal_snacks
+        MealType.SNACKS -> R.string.meal_snacks
     }
 
     companion object {

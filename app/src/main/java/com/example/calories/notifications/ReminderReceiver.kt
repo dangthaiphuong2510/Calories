@@ -1,13 +1,9 @@
 package com.example.calories.notifications
 
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import com.example.calories.R
-import com.example.calories.ui.MainActivity
 
 class ReminderReceiver : BroadcastReceiver() {
 
@@ -22,9 +18,12 @@ class ReminderReceiver : BroadcastReceiver() {
         val hour = intent.getIntExtra(EXTRA_HOUR, 8)
         val minute = intent.getIntExtra(EXTRA_MINUTE, 0)
 
-        showNotification(context, alarmId, title, message)
+        ReminderScheduler(context.applicationContext).postNotification(
+            notificationId = alarmId,
+            title = title,
+            message = message,
+        )
 
-        // setExact* is one-shot — reschedule for the next day
         ReminderScheduler(context.applicationContext).scheduleDailyAlarm(
             id = alarmId,
             hour = hour,
@@ -32,39 +31,6 @@ class ReminderReceiver : BroadcastReceiver() {
             title = title,
             message = message,
         )
-    }
-
-    private fun showNotification(
-        context: Context,
-        alarmId: Int,
-        title: String,
-        message: String,
-    ) {
-        ReminderScheduler(context.applicationContext).ensureChannel()
-
-        val contentIntent = PendingIntent.getActivity(
-            context,
-            alarmId,
-            Intent(context, MainActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-
-        val notification = NotificationCompat.Builder(context, ReminderScheduler.CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notifications_24)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(contentIntent)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .build()
-
-        runCatching {
-            NotificationManagerCompat.from(context).notify(alarmId, notification)
-        }
     }
 
     companion object {

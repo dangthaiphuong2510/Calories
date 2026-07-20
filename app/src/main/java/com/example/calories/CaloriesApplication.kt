@@ -3,6 +3,7 @@ package com.example.calories
 import android.app.Application
 import com.example.calories.data.preferences.AppPreferences
 import com.example.calories.notifications.ReminderScheduler
+import com.google.android.gms.ads.MobileAds
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -17,6 +18,7 @@ class CaloriesApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        MobileAds.initialize(this)
         reminderScheduler.ensureChannel()
         appPreferences.applyStoredSettings()
     }

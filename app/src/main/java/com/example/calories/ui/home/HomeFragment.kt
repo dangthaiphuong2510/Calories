@@ -19,6 +19,7 @@ import com.example.calories.databinding.ItemHomeMealCircleBinding
 import com.example.calories.databinding.ItemHomeMealDetailSectionBinding
 import com.example.calories.databinding.ItemHomeMealFoodBinding
 import com.example.calories.model.enums.MealType
+import com.example.calories.ui.camera.FoodAnalysisResultFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
 import com.example.calories.ui.exercise.ExerciseLoggerActivity
@@ -26,6 +27,7 @@ import com.example.calories.ui.food.FoodDetailActivity
 import com.example.calories.ui.food.SearchFoodActivity
 import com.example.calories.ui.notifications.NotificationSettingsActivity
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.UnitConverter
 import com.google.android.material.datepicker.MaterialDatePicker
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.Instant
@@ -50,11 +52,18 @@ class HomeFragment : Fragment() {
             ?.let { runCatching { MealType.valueOf(it) }.getOrNull() }
             ?: return@registerForActivityResult
         viewModel.onMealFoodLogged(mealType)
+        viewModel.expandMealDetails()
     }
 
     private val foodDetailLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
-    ) { /* view-only; no feedback */ }
+    ) { result ->
+        if (result.resultCode != Activity.RESULT_OK) return@registerForActivityResult
+        if (result.data?.getBooleanExtra(FoodDetailActivity.EXTRA_FOOD_UPDATED, false) == true) {
+            viewModel.refresh()
+            viewModel.expandMealDetails()
+        }
+    }
 
     private val exerciseLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -73,6 +82,18 @@ class HomeFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupInteractions()
         observeViewModel()
+        parentFragmentManager.setFragmentResultListener(
+            FoodAnalysisResultFragment.HOME_FOOD_LOGGED_REQUEST,
+            viewLifecycleOwner,
+        ) { _, bundle ->
+            val mealType = bundle
+                .getString(FoodAnalysisResultFragment.HOME_FOOD_LOGGED_MEAL_TYPE)
+                ?.let { runCatching { MealType.valueOf(it) }.getOrNull() }
+                ?: return@setFragmentResultListener
+            viewModel.onMealFoodLogged(mealType)
+            viewModel.expandMealDetails()
+            viewModel.selectDate(DateTimeUtils.today())
+        }
     }
 
     private fun setupInteractions() {
@@ -91,7 +112,7 @@ class HomeFragment : Fragment() {
             viewModel.onAddMealClicked(MealType.DINNER)
         }
         binding.sectionMeals.mealSnacks.btnAddMealFood.setOnClickListener {
-            viewModel.onAddMealClicked(MealType.SNACK)
+            viewModel.onAddMealClicked(MealType.SNACKS)
         }
         binding.sectionMeals.btnToggleMealDetails.setOnClickListener {
             viewModel.toggleMealDetails()
@@ -183,6 +204,20 @@ class HomeFragment : Fragment() {
         card.tvCaloriesBurned.text = state.totalBurned.toString()
         card.tvCaloriesRemaining.text = state.caloriesRemaining.toString()
         card.progressCalories.setProgressCompat(state.calorieProgressPercent, true)
+
+        val warningActive = state.intakeWarningsEnabled && state.calorieTargetReached
+        val calorieColor = ContextCompat.getColor(
+            requireContext(),
+            if (warningActive) R.color.warning else R.color.primary,
+        )
+        card.progressCalories.setIndicatorColor(calorieColor)
+        card.tvCaloriesRemaining.setTextColor(calorieColor)
+        card.tvCaloriesEaten.setTextColor(
+            ContextCompat.getColor(
+                requireContext(),
+                if (warningActive) R.color.warning else R.color.text_primary,
+            ),
+        )
     }
 
     private fun bindMacrosCard(state: HomeUiState) {
@@ -205,6 +240,43 @@ class HomeFragment : Fragment() {
         card.progressProtein.setProgressCompat(state.protein.progressPercent, true)
         card.progressCarb.setProgressCompat(state.carbs.progressPercent, true)
         card.progressFat.setProgressCompat(state.fat.progressPercent, true)
+
+        bindMacroWarning(
+            enabled = state.intakeWarningsEnabled && state.protein.targetReached,
+            valueView = card.tvProteinValue,
+            indicator = card.progressProtein,
+            normalIndicatorColor = R.color.macro_protein,
+        )
+        bindMacroWarning(
+            enabled = state.intakeWarningsEnabled && state.carbs.targetReached,
+            valueView = card.tvCarbValue,
+            indicator = card.progressCarb,
+            normalIndicatorColor = R.color.macro_carb,
+        )
+        bindMacroWarning(
+            enabled = state.intakeWarningsEnabled && state.fat.targetReached,
+            valueView = card.tvFatValue,
+            indicator = card.progressFat,
+            normalIndicatorColor = R.color.macro_fat,
+        )
+    }
+
+    private fun bindMacroWarning(
+        enabled: Boolean,
+        valueView: android.widget.TextView,
+        indicator: com.google.android.material.progressindicator.LinearProgressIndicator,
+        normalIndicatorColor: Int,
+    ) {
+        val indicatorColor = ContextCompat.getColor(
+            requireContext(),
+            if (enabled) R.color.warning else normalIndicatorColor,
+        )
+        val textColor = ContextCompat.getColor(
+            requireContext(),
+            if (enabled) R.color.warning else R.color.text_primary,
+        )
+        indicator.setIndicatorColor(indicatorColor)
+        valueView.setTextColor(textColor)
     }
 
     private fun bindMealsSection(state: HomeUiState) {
@@ -380,13 +452,8 @@ class HomeFragment : Fragment() {
     }
 
     private fun bindWeightCard(state: HomeUiState) {
-        val weight = state.todayWeightKg
-
-        binding.sectionWeight.tvWeightValue.text = if (weight == null) {
-            "— kg"
-        } else {
-            getString(R.string.weight_kg_format, weight)
-        }
+        binding.sectionWeight.tvWeightValue.text =
+            UnitConverter.formatWeight(requireContext(), state.todayWeightKg, state.unitSystem)
 
         binding.sectionWeight.btnWeightMinus.isEnabled = true
         binding.sectionWeight.btnWeightPlus.isEnabled = true
@@ -409,6 +476,7 @@ class HomeFragment : Fragment() {
         foodDetailLauncher.launch(
             FoodDetailActivity.intent(
                 context = requireContext(),
+                foodId = event.foodId,
                 name = event.name,
                 calories = event.calories,
                 protein = event.protein,
@@ -417,7 +485,7 @@ class HomeFragment : Fragment() {
                 servingGrams = event.servingGrams,
                 mealType = event.mealType,
                 selectedDate = viewModel.uiState.value.currentDate,
-                viewOnly = event.viewOnly,
+                createdAt = event.createdAt,
             ),
         )
     }

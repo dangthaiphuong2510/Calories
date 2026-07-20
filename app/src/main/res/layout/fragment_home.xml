@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="?android:attr/colorBackground"
     android:clipToPadding="false"
     android:fillViewport="true"
     android:paddingBottom="@dimen/home_header_gap"
@@ -31,7 +31,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/previous_day"
                 android:src="@drawable/ic_chevron_left_24"
-                app:tint="@color/text_primary" />
+                app:tint="?attr/colorOnSurface" />
 
             <TextView
                 android:id="@+id/tvCurrentDate"
@@ -44,7 +44,7 @@
                 android:gravity="center"
                 android:paddingHorizontal="8dp"
                 android:paddingVertical="8dp"
-                android:textColor="@color/text_primary"
+                android:textColor="?attr/colorOnSurface"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 tools:text="Today, Jul 16" />
@@ -56,7 +56,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/next_day"
                 android:src="@drawable/ic_chevron_right_24"
-                app:tint="@color/text_primary" />
+                app:tint="?attr/colorOnSurface" />
 
             <ImageButton
                 android:id="@+id/btnNotifications"
@@ -66,7 +66,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/notification_settings_title"
                 android:src="@drawable/ic_notifications_24"
-                app:tint="@color/text_primary" />
+                app:tint="?attr/colorOnSurface" />
         </LinearLayout>
 
         <include

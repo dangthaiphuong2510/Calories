@@ -33,7 +33,7 @@ import java.util.UUID
 import javax.inject.Inject
 
 data class SearchFoodUiState(
-    val mealType: MealType = MealType.SNACK,
+    val mealType: MealType = MealType.SNACKS,
     val selectedDate: LocalDate = DateTimeUtils.today(),
     val dateLabelShort: String = "",
     val query: String = "",

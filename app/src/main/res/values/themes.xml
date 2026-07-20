@@ -1,48 +1,127 @@
 <?xml version="1.0" encoding="utf-8"?>
+
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Base.Theme.Calories" parent="Theme.Material3.DayNight.NoActionBar" />
+
+    <style name="Base.Theme.Calories" parent="Theme.Material3.DayNight.NoActionBar">
+
+        <item name="colorPrimary">@color/primary</item>
+
+        <item name="colorOnPrimary">@color/white</item>
+
+        <item name="colorSurface">@color/surface</item>
+
+        <item name="colorOnSurface">@color/text_primary</item>
+
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+
+        <item name="android:colorBackground">@color/background</item>
+
+        <item name="android:windowBackground">@color/background</item>
+
+        <item name="bottomNavigationStyle">@style/Widget.Calories.BottomNavigationView</item>
+
+    </style>
+
 
     <style name="Theme.Calories" parent="Base.Theme.Calories" />
 
-    <style name="Widget.Calories.HomeCard" parent="Widget.MaterialComponents.CardView">
-        <item name="cardBackgroundColor">@color/white</item>
-        <item name="cardCornerRadius">@dimen/home_card_radius</item>
-        <item name="cardElevation">@dimen/home_card_elevation</item>
-        <item name="strokeColor">@color/card_stroke</item>
-        <item name="strokeWidth">1dp</item>
+    <style name="Theme.BottomNavIndicator" parent="">
+        <item name="colorSecondaryContainer">@color/divider</item>
     </style>
+
+    <style name="Widget.Calories.HomeCard" parent="Widget.MaterialComponents.CardView">
+
+        <item name="cardBackgroundColor">?attr/colorSurface</item>
+
+        <item name="cardCornerRadius">@dimen/home_card_radius</item>
+
+        <item name="cardElevation">@dimen/home_card_elevation</item>
+
+        <item name="strokeColor">@color/card_stroke</item>
+
+        <item name="strokeWidth">1dp</item>
+
+    </style>
+
+
+
+    <style name="Widget.Calories.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
+
+        <item name="android:background">?attr/colorSurface</item>
+
+        <item name="itemIconTint">@color/selector_bottom_nav</item>
+
+        <item name="itemTextColor">@color/selector_bottom_nav</item>
+
+    </style>
+
+
 
     <style name="TextAppearance.Calories.Home.SectionTitle" parent="TextAppearance.Material3.TitleMedium">
-        <item name="android:textColor">@color/text_primary</item>
+
+        <item name="android:textColor">?attr/colorOnSurface</item>
+
         <item name="android:textStyle">bold</item>
+
     </style>
+
+
 
     <style name="TextAppearance.Calories.Home.Secondary" parent="TextAppearance.Material3.BodySmall">
-        <item name="android:textColor">@color/text_secondary</item>
+
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+
     </style>
+
+
 
     <style name="Widget.Calories.Home.IconButton" parent="Widget.Material3.Button.IconButton.Filled">
+
         <item name="android:layout_width">@dimen/home_icon_button_size</item>
+
         <item name="android:layout_height">@dimen/home_icon_button_size</item>
+
         <item name="android:insetLeft">0dp</item>
+
         <item name="android:insetTop">0dp</item>
+
         <item name="android:insetRight">0dp</item>
+
         <item name="android:insetBottom">0dp</item>
+
         <item name="android:padding">0dp</item>
+
         <item name="backgroundTint">@color/primary</item>
+
         <item name="iconGravity">textStart</item>
+
         <item name="iconPadding">0dp</item>
+
         <item name="iconSize">20dp</item>
+
         <item name="iconTint">@color/white</item>
+
     </style>
+
+
 
     <style name="ThemeOverlay.Calories.MaterialCalendar" parent="@style/ThemeOverlay.Material3.MaterialCalendar">
+
         <item name="colorPrimary">@color/primary</item>
+
         <item name="colorOnPrimary">@color/white</item>
+
     </style>
 
+
+
     <style name="ShapeAppearance.Calories.Circle" parent="">
+
         <item name="cornerFamily">rounded</item>
+
         <item name="cornerSize">50%</item>
+
     </style>
+
 </resources>
+

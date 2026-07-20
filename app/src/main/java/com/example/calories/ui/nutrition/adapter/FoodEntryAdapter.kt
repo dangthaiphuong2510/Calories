@@ -47,7 +47,7 @@ class FoodEntryAdapter : ListAdapter<FoodEntry, FoodEntryAdapter.ViewHolder>(Dif
                 MealType.BREAKFAST -> R.string.meal_breakfast
                 MealType.LUNCH -> R.string.meal_lunch
                 MealType.DINNER -> R.string.meal_dinner
-                MealType.SNACK -> R.string.meal_snack
+                MealType.SNACKS -> R.string.meal_snack
             }
             return binding.root.context.getString(res)
         }

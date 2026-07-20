@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import com.example.calories.R
 import com.example.calories.databinding.ActivityFoodDetailBinding
 import com.example.calories.model.enums.MealType
@@ -28,23 +29,16 @@ class FoodDetailActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityFoodDetailBinding
     private val viewModel: FoodDetailViewModel by viewModels()
-    private var suppressPortionWatcher = false
+    private var suppressWatchers = false
 
-    private val portionWatcher = object : TextWatcher {
-        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-        override fun afterTextChanged(s: Editable?) {
-            if (!suppressPortionWatcher) {
-                viewModel.onPortionChanged(s?.toString().orEmpty())
-            }
-        }
-    }
+    private val portionWatcher = simpleWatcher { viewModel.onPortionChanged(it) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFoodDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        val foodId = intent.getStringExtra(EXTRA_FOOD_ID)
         val name = intent.getStringExtra(EXTRA_NAME).orEmpty()
         val calories = intent.getIntExtra(EXTRA_CALORIES, 0)
         val protein = intent.getDoubleExtra(EXTRA_PROTEIN, 0.0)
@@ -53,13 +47,14 @@ class FoodDetailActivity : AppCompatActivity() {
         val servingGrams = intent.getDoubleExtra(EXTRA_SERVING_GRAMS, 100.0)
         val mealType = intent.getStringExtra(EXTRA_MEAL_TYPE)
             ?.let { runCatching { MealType.valueOf(it) }.getOrNull() }
-            ?: MealType.SNACK
+            ?: MealType.SNACKS
         val selectedDate = intent.getStringExtra(EXTRA_SELECTED_DATE)
             ?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             ?: DateTimeUtils.today()
-        val viewOnly = intent.getBooleanExtra(EXTRA_VIEW_ONLY, false)
+        val createdAt = intent.getStringExtra(EXTRA_CREATED_AT)
 
         viewModel.initialize(
+            foodId = foodId,
             name = name,
             calories = calories,
             protein = protein,
@@ -68,18 +63,18 @@ class FoodDetailActivity : AppCompatActivity() {
             servingGrams = servingGrams,
             mealType = mealType,
             selectedDate = selectedDate,
-            viewOnly = viewOnly,
+            createdAt = createdAt,
         )
 
-        setupUi(viewOnly)
+        setupUi()
         observeViewModel()
     }
 
-    private fun setupUi(viewOnly: Boolean) {
+    private fun setupUi() {
         binding.btnBack.setOnClickListener { finish() }
         binding.etPortion.addTextChangedListener(portionWatcher)
-        binding.btnLogFood.visibility = if (viewOnly) View.GONE else View.VISIBLE
         binding.btnLogFood.setOnClickListener { viewModel.logFood() }
+        binding.btnSaveChanges.setOnClickListener { viewModel.saveChanges() }
         setupChart()
     }
 
@@ -109,14 +104,21 @@ class FoodDetailActivity : AppCompatActivity() {
                 getString(R.string.burn_run_format, state.burnMinutesRun)
             binding.tvBurnCycle.text =
                 getString(R.string.burn_cycle_format, state.burnMinutesCycle)
-            binding.btnLogFood.isEnabled = !state.isSaving
 
-            val portionText = formatPortion(state.portionGrams)
-            if (binding.etPortion.text?.toString() != portionText) {
-                suppressPortionWatcher = true
-                binding.etPortion.setText(portionText)
-                binding.etPortion.setSelection(portionText.length)
-                suppressPortionWatcher = false
+            binding.groupMacroPills.isVisible = !state.isEditMode
+            binding.groupEditNutrients.isVisible = state.isEditMode
+            binding.btnLogFood.isVisible = !state.isEditMode
+            binding.btnSaveChanges.isVisible = state.isEditMode && state.hasChanges
+            binding.btnLogFood.isEnabled = !state.isSaving
+            binding.btnSaveChanges.isEnabled = !state.isSaving
+
+            bindEditableField(binding.etPortion, formatNumber(state.portionDisplay))
+            binding.tilPortion.hint = getString(state.portionHintRes)
+            if (state.isEditMode) {
+                bindReadOnlyField(binding.etCalories, state.calories.toString())
+                bindReadOnlyField(binding.etProtein, formatNumber(state.protein))
+                bindReadOnlyField(binding.etCarb, formatNumber(state.carb))
+                bindReadOnlyField(binding.etFat, formatNumber(state.fat))
             }
             bindChart(state)
         }
@@ -125,8 +127,13 @@ class FoodDetailActivity : AppCompatActivity() {
             when (event) {
                 is UiEvent.Message ->
                     Toast.makeText(this, event.text, Toast.LENGTH_SHORT).show()
-                is UiEvent.MessageRes ->
+                is UiEvent.MessageRes -> {
                     Toast.makeText(this, event.resId, Toast.LENGTH_SHORT).show()
+                    if (event.resId == R.string.invalid_portion_size) {
+                        val portion = formatNumber(viewModel.uiState.value.portionDisplay)
+                        bindEditableField(binding.etPortion, portion)
+                    }
+                }
             }
         }
 
@@ -136,6 +143,43 @@ class FoodDetailActivity : AppCompatActivity() {
                 Intent().putExtra(EXTRA_MEAL_TYPE, mealType.name),
             )
             finish()
+        }
+
+        collectLatestStarted(viewModel.updated) {
+            setResult(
+                RESULT_OK,
+                Intent().putExtra(EXTRA_FOOD_UPDATED, true),
+            )
+            finish()
+        }
+    }
+
+    private fun bindEditableField(
+        field: android.widget.EditText,
+        text: String,
+    ) {
+        if (field.text?.toString() == text) return
+        suppressWatchers = true
+        field.setText(text)
+        field.setSelection(text.length)
+        suppressWatchers = false
+    }
+
+    private fun bindReadOnlyField(
+        field: android.widget.EditText,
+        text: String,
+    ) {
+        if (field.text?.toString() == text) return
+        field.setText(text)
+    }
+
+    private fun simpleWatcher(onChanged: (String) -> Unit): TextWatcher = object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+        override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+        override fun afterTextChanged(s: Editable?) {
+            if (!suppressWatchers) {
+                onChanged(s?.toString().orEmpty())
+            }
         }
     }
 
@@ -166,11 +210,12 @@ class FoodDetailActivity : AppCompatActivity() {
         binding.chartMacros.invalidate()
     }
 
-    private fun formatPortion(value: Double): String {
+    private fun formatNumber(value: Double): String {
         return if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
     }
 
     companion object {
+        const val EXTRA_FOOD_ID = "extra_food_id"
         const val EXTRA_NAME = "extra_name"
         const val EXTRA_CALORIES = "extra_calories"
         const val EXTRA_PROTEIN = "extra_protein"
@@ -179,7 +224,8 @@ class FoodDetailActivity : AppCompatActivity() {
         const val EXTRA_SERVING_GRAMS = "extra_serving_grams"
         const val EXTRA_MEAL_TYPE = "extra_meal_type"
         const val EXTRA_SELECTED_DATE = "extra_selected_date"
-        const val EXTRA_VIEW_ONLY = "extra_view_only"
+        const val EXTRA_CREATED_AT = "extra_created_at"
+        const val EXTRA_FOOD_UPDATED = "extra_food_updated"
 
         fun intent(
             context: Context,
@@ -191,8 +237,10 @@ class FoodDetailActivity : AppCompatActivity() {
             servingGrams: Double,
             mealType: MealType,
             selectedDate: LocalDate,
-            viewOnly: Boolean,
+            foodId: String? = null,
+            createdAt: String? = null,
         ): Intent = Intent(context, FoodDetailActivity::class.java).apply {
+            putExtra(EXTRA_FOOD_ID, foodId)
             putExtra(EXTRA_NAME, name)
             putExtra(EXTRA_CALORIES, calories)
             putExtra(EXTRA_PROTEIN, protein)
@@ -201,7 +249,7 @@ class FoodDetailActivity : AppCompatActivity() {
             putExtra(EXTRA_SERVING_GRAMS, servingGrams)
             putExtra(EXTRA_MEAL_TYPE, mealType.name)
             putExtra(EXTRA_SELECTED_DATE, selectedDate.toString())
-            putExtra(EXTRA_VIEW_ONLY, viewOnly)
+            putExtra(EXTRA_CREATED_AT, createdAt)
         }
     }
 }

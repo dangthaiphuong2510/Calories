@@ -16,6 +16,7 @@ import com.example.calories.model.UserGoal
 import com.example.calories.model.enums.ActivityLevel
 import com.example.calories.model.enums.Gender
 import com.example.calories.model.enums.GoalType
+import com.example.calories.util.UnitConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -38,7 +39,6 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import javax.inject.Inject
 import kotlin.math.pow
-import kotlin.math.roundToInt
 
 data class ProfileUiState(
     val userName: String = "User",
@@ -254,18 +254,13 @@ class ProfileViewModel @Inject constructor(
 
     private fun formatMetrics(goal: UserGoal?, unit: UnitSystem): MetricsDisplay {
         if (goal == null) return MetricsDisplay()
-        val heightText = when (unit) {
-            UnitSystem.METRIC -> String.format("%.0f cm", goal.heightCm)
-            UnitSystem.IMPERIAL -> {
-                val totalInches = goal.heightCm / 2.54
-                val feet = (totalInches / 12).toInt()
-                val inches = (totalInches % 12).roundToInt().coerceIn(0, 11)
-                "$feet' $inches\""
-            }
-        }
+        val heightText = UnitConverter.formatHeight(goal.heightCm, unit)
         val weightText = when (unit) {
             UnitSystem.METRIC -> String.format("%.1f kg", goal.currentWeight)
-            UnitSystem.IMPERIAL -> String.format("%.1f lb", goal.currentWeight * KG_TO_LB)
+            UnitSystem.IMPERIAL -> String.format(
+                "%.1f lb",
+                UnitConverter.kgToLb(goal.currentWeight),
+            )
         }
         val bmi = calculateBmi(goal.heightCm, goal.currentWeight)
         return MetricsDisplay(
@@ -303,8 +298,4 @@ class ProfileViewModel @Inject constructor(
         val bmiValue: Double? = null,
         val bmiCategoryRes: Int? = null,
     )
-
-    private companion object {
-        const val KG_TO_LB = 2.2046226218
-    }
 }

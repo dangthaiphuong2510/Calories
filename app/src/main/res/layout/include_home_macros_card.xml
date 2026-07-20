@@ -41,7 +41,7 @@
                     android:id="@+id/tvProteinValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="50g / 150g" />
@@ -54,7 +54,7 @@
                 android:layout_marginTop="6dp"
                 android:progress="0"
                 app:indicatorColor="@color/macro_protein"
-                app:trackColor="@color/surface"
+                app:trackColor="@color/water_empty"
                 app:trackCornerRadius="8dp"
                 app:trackThickness="@dimen/home_macro_track_thickness" />
         </LinearLayout>
@@ -81,7 +81,7 @@
                     android:id="@+id/tvCarbValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="80g / 250g" />
@@ -94,7 +94,7 @@
                 android:layout_marginTop="6dp"
                 android:progress="0"
                 app:indicatorColor="@color/macro_carb"
-                app:trackColor="@color/surface"
+                app:trackColor="@color/water_empty"
                 app:trackCornerRadius="8dp"
                 app:trackThickness="@dimen/home_macro_track_thickness" />
         </LinearLayout>
@@ -121,7 +121,7 @@
                     android:id="@+id/tvFatValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/text_primary"
+                    android:textColor="?attr/colorOnSurface"
                     android:textSize="13sp"
                     android:textStyle="bold"
                     tools:text="20g / 65g" />
@@ -134,7 +134,7 @@
                 android:layout_marginTop="6dp"
                 android:progress="0"
                 app:indicatorColor="@color/macro_fat"
-                app:trackColor="@color/surface"
+                app:trackColor="@color/water_empty"
                 app:trackCornerRadius="8dp"
                 app:trackThickness="@dimen/home_macro_track_thickness" />
         </LinearLayout>

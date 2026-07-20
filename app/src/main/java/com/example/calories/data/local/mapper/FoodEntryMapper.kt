@@ -12,7 +12,8 @@ fun FoodEntryEntity.toDomain(): FoodEntry = FoodEntry(
     protein = protein,
     carb = carb,
     fat = fat,
-    mealType = runCatching { MealType.valueOf(mealType) }.getOrDefault(MealType.SNACK),
+    mealType = MealType.entries.find { it.name.equals(mealType, ignoreCase = true) }
+        ?: MealType.SNACKS,
     servingGrams = servingGrams,
     createdAt = createdAt,
 )

@@ -6,7 +6,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
+    android:background="?android:attr/colorBackground"
     tools:context=".ui.MainActivity">
 
     <androidx.fragment.app.FragmentContainerView
@@ -30,13 +30,14 @@
 
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottomNav"
+            style="@style/Widget.Calories.BottomNavigationView"
+            android:theme="@style/Theme.BottomNavIndicator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/white"
             android:elevation="8dp"
             android:paddingTop="12dp"
-            app:itemIconTint="@color/primary"
-            app:itemTextColor="@color/primary"
+            android:background="@color/water_empty"
+            android:backgroundTint="@color/water_empty"
             app:labelVisibilityMode="labeled"
             app:menu="@menu/menu_bottom_nav" >
 

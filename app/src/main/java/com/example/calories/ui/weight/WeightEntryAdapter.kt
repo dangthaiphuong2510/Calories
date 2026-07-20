@@ -5,12 +5,28 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.example.calories.R
+import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.databinding.ItemWeightEntryBinding
 import com.example.calories.model.WeightEntry
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.UnitConverter
 
 class WeightEntryAdapter : ListAdapter<WeightEntry, WeightEntryAdapter.ViewHolder>(DiffCallback) {
+
+    private var unitSystem: UnitSystem = UnitSystem.METRIC
+
+    fun submitList(list: List<WeightEntry>?, unit: UnitSystem) {
+        val unitChanged = unitSystem != unit
+        unitSystem = unit
+        if (unitChanged) {
+            // Force rebind so kg ↔ lb labels refresh even when entry data is unchanged.
+            submitList(null) {
+                submitList(list)
+            }
+        } else {
+            submitList(list)
+        }
+    }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val binding = ItemWeightEntryBinding.inflate(
@@ -22,18 +38,19 @@ class WeightEntryAdapter : ListAdapter<WeightEntry, WeightEntryAdapter.ViewHolde
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), unitSystem)
     }
 
     class ViewHolder(
         private val binding: ItemWeightEntryBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
 
-        fun bind(entry: WeightEntry) {
+        fun bind(entry: WeightEntry, unitSystem: UnitSystem) {
             binding.tvWeightDate.text = DateTimeUtils.formatDisplayDate(entry.recordedAt)
-            binding.tvWeightValue.text = binding.root.context.getString(
-                R.string.weight_kg_format,
+            binding.tvWeightValue.text = UnitConverter.formatWeight(
+                binding.root.context,
                 entry.weightKg,
+                unitSystem,
             )
         }
     }

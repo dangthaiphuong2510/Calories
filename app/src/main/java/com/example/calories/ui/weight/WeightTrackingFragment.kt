@@ -9,11 +9,13 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.calories.R
+import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.databinding.DialogAddWeightBinding
 import com.example.calories.databinding.FragmentWeightTrackingBinding
 import com.example.calories.ui.common.BaseFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
+import com.example.calories.util.UnitConverter
 import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -25,6 +27,7 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
 
     private val viewModel: WeightTrackingViewModel by viewModels()
     private val adapter = WeightEntryAdapter()
+    private var currentUnitSystem: UnitSystem = UnitSystem.METRIC
 
     override fun inflateBinding(
         inflater: LayoutInflater,
@@ -66,14 +69,19 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
         val fatColor = ContextCompat.getColor(requireContext(), R.color.macro_fat)
 
         viewLifecycleOwner.collectLatestStarted(viewModel.uiState) { state ->
-            binding.tvCurrentWeight.text = state.currentWeightKg?.let {
-                getString(R.string.weight_kg_format, it)
-            } ?: "— kg"
-            binding.tvTargetWeight.text = state.targetWeightKg?.let {
-                getString(R.string.weight_kg_format, it)
-            } ?: "— kg"
-            adapter.submitList(state.entries)
-            WeightChartHelper.bind(binding.weightChart, state.entries, primaryColor)
+            currentUnitSystem = state.unitSystem
+            binding.tvCurrentWeight.text =
+                UnitConverter.formatWeight(requireContext(), state.currentWeightKg, state.unitSystem)
+            binding.tvTargetWeight.text =
+                UnitConverter.formatWeight(requireContext(), state.targetWeightKg, state.unitSystem)
+            adapter.submitList(state.entries, state.unitSystem)
+            WeightChartHelper.bind(
+                chart = binding.weightChart,
+                entries = state.entries,
+                primaryColor = primaryColor,
+                unitSystem = state.unitSystem,
+                seriesLabel = getString(UnitConverter.chartWeightLabelRes(state.unitSystem)),
+            )
             binding.tvEmptyWeight.visibility =
                 if (state.entries.isEmpty()) View.VISIBLE else View.GONE
 
@@ -198,6 +206,7 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
 
     private fun showLogWeightDialog() {
         val dialogBinding = DialogAddWeightBinding.inflate(layoutInflater)
+        dialogBinding.tilWeight.hint = getString(UnitConverter.weightLabelRes(currentUnitSystem))
         val dialog = MaterialAlertDialogBuilder(requireContext())
             .setView(dialogBinding.root)
             .create()
