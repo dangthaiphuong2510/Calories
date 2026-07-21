@@ -477,6 +477,7 @@ class HomeFragment : Fragment() {
             FoodDetailActivity.intent(
                 context = requireContext(),
                 foodId = event.foodId,
+                favoriteFoodId = event.foodId,
                 name = event.name,
                 calories = event.calories,
                 protein = event.protein,

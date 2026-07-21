@@ -25,10 +25,11 @@
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
-        android:layout_height="360dp"
+        android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:clipToPadding="false"
         android:fillViewport="true"
+        android:maxHeight="@dimen/bottom_sheet_scroll_max_height"
         android:paddingHorizontal="20dp">
 
         <TextView

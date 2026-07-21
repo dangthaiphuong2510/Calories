@@ -15,11 +15,13 @@ class LocalDataWiper @Inject constructor(
     @ApplicationContext private val context: Context,
     private val database: CaloriesDatabase,
     private val appPreferences: AppPreferences,
+    private val authDataStore: AuthDataStore,
     private val reminderScheduler: ReminderScheduler,
 ) {
     suspend fun wipeAll() = withContext(Dispatchers.IO) {
         database.clearAllTables()
         appPreferences.clear()
+        authDataStore.clearLoginState()
         context.getSharedPreferences(NotificationPreferences.PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .clear()

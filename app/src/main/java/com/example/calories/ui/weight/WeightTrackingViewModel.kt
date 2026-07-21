@@ -41,6 +41,8 @@ enum class NutritionPeriod {
     WEEK,
 }
 
+private const val COLLAPSED_HISTORY_COUNT = 3
+
 data class DailyCaloriePoint(
     val date: LocalDate,
     val label: String,
@@ -65,6 +67,7 @@ data class WeightUiState(
     val currentWeightKg: Double? = null,
     val targetWeightKg: Double? = null,
     val entries: List<WeightEntry> = emptyList(),
+    val isHistoryExpanded: Boolean = false,
     val nutritionPeriod: NutritionPeriod = NutritionPeriod.WEEK,
     val selectedDate: LocalDate = DateTimeUtils.today(),
     val periodLabel: String = "",
@@ -72,7 +75,14 @@ data class WeightUiState(
     val macroDistribution: MacroDistributionUi = MacroDistributionUi(),
     val unitSystem: UnitSystem = UnitSystem.METRIC,
     val language: AppLanguage = AppLanguage.ENGLISH,
-)
+) {
+    fun displayedHistoryEntries(): List<WeightEntry> {
+        if (isHistoryExpanded || entries.size <= COLLAPSED_HISTORY_COUNT) return entries
+        return entries.take(COLLAPSED_HISTORY_COUNT)
+    }
+
+    fun canToggleHistory(): Boolean = entries.size > COLLAPSED_HISTORY_COUNT
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -95,6 +105,9 @@ class WeightTrackingViewModel @Inject constructor(
 
     private val _selectedDate = MutableStateFlow(DateTimeUtils.today())
     val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
+    private val _isHistoryExpanded = MutableStateFlow(false)
+    val isHistoryExpanded: StateFlow<Boolean> = _isHistoryExpanded.asStateFlow()
 
     val uiState: StateFlow<WeightUiState> = flowOf(userId)
         .flatMapLatest { id ->
@@ -126,6 +139,9 @@ class WeightTrackingViewModel @Inject constructor(
                 }
             }
         }
+        .combine(_isHistoryExpanded) { state, expanded ->
+            state.copy(isHistoryExpanded = expanded)
+        }
         .stateIn(viewModelScope, SharingStarted.Eagerly, WeightUiState())
 
     init {
@@ -138,6 +154,10 @@ class WeightTrackingViewModel @Inject constructor(
 
     fun selectNutritionDate(date: LocalDate) {
         _selectedDate.value = date
+    }
+
+    fun toggleHistoryExpanded() {
+        _isHistoryExpanded.value = !_isHistoryExpanded.value
     }
 
     fun refresh() {

@@ -34,6 +34,7 @@ data class RecipeDetailUiState(
     val fat: Double = 0.0,
     val scaledIngredients: List<ScaledRecipeIngredient> = emptyList(),
     val isSaving: Boolean = false,
+    val isUnlocked: Boolean = false,
 ) {
     val totalMacros: Double get() = (protein + carb + fat).coerceAtLeast(0.01)
 }
@@ -50,6 +51,7 @@ class RecipeDetailViewModel @Inject constructor(
     private val _recipeState = MutableStateFlow<UiState<Recipe>>(UiState.Loading)
     private val _portionGrams = MutableStateFlow(DEFAULT_PORTION_GRAMS)
     private val _isSaving = MutableStateFlow(false)
+    private val _isUnlocked = MutableStateFlow(false)
 
     private val _events = Channel<UiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
@@ -61,17 +63,20 @@ class RecipeDetailViewModel @Inject constructor(
         _recipeState,
         _portionGrams,
         _isSaving,
-    ) { recipeState, portionGrams, isSaving ->
+        _isUnlocked,
+    ) { recipeState, portionGrams, isSaving, isUnlocked ->
         when (recipeState) {
             is UiState.Loading -> RecipeDetailUiState(
                 recipeState = recipeState,
                 portionGrams = portionGrams,
                 isSaving = isSaving,
+                isUnlocked = isUnlocked,
             )
             is UiState.Error -> RecipeDetailUiState(
                 recipeState = recipeState,
                 portionGrams = portionGrams,
                 isSaving = isSaving,
+                isUnlocked = isUnlocked,
             )
             is UiState.Success -> {
                 val recipe = recipeState.data
@@ -86,6 +91,7 @@ class RecipeDetailViewModel @Inject constructor(
                     fat = (macros?.fatG ?: 0.0) * scale,
                     scaledIngredients = recipe.ingredients.map { it.scaled(scale) },
                     isSaving = isSaving,
+                    isUnlocked = isUnlocked,
                 )
             }
         }
@@ -96,10 +102,12 @@ class RecipeDetailViewModel @Inject constructor(
     )
 
     init {
+        checkUnlockStatus()
         loadRecipe()
     }
 
     fun retry() {
+        checkUnlockStatus()
         loadRecipe()
     }
 
@@ -107,6 +115,11 @@ class RecipeDetailViewModel @Inject constructor(
         val value = raw.toDoubleOrNull() ?: return
         if (value <= 0.0) return
         _portionGrams.value = value
+    }
+
+    fun unlockRecipe() {
+        recipeRepository.unlockRecipe(recipeId)
+        _isUnlocked.value = true
     }
 
     fun addToMeal(mealType: MealType) {
@@ -135,6 +148,10 @@ class RecipeDetailViewModel @Inject constructor(
                 _isSaving.value = false
             }
         }
+    }
+
+    private fun checkUnlockStatus() {
+        _isUnlocked.value = recipeRepository.isRecipeUnlocked(recipeId)
     }
 
     private fun loadRecipe() {

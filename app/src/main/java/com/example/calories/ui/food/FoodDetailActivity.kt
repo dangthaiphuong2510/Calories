@@ -3,9 +3,12 @@ package com.example.calories.ui.food
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.DisplayMetrics
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
@@ -21,6 +24,12 @@ import com.example.calories.util.DateTimeUtils
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
+import com.google.ads.mediation.admob.AdMobAdapter
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdSize
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.LoadAdError
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 
@@ -33,12 +42,16 @@ class FoodDetailActivity : AppCompatActivity() {
 
     private val portionWatcher = simpleWatcher { viewModel.onPortionChanged(it) }
 
+    private var adView: AdView? = null
+    private val BANNER_AD_UNIT_ID = "ca-app-pub-3940256099942544/6300978111"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityFoodDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
         val foodId = intent.getStringExtra(EXTRA_FOOD_ID)
+        val favoriteFoodId = intent.getStringExtra(EXTRA_FAVORITE_FOOD_ID)
         val name = intent.getStringExtra(EXTRA_NAME).orEmpty()
         val calories = intent.getIntExtra(EXTRA_CALORIES, 0)
         val protein = intent.getDoubleExtra(EXTRA_PROTEIN, 0.0)
@@ -55,6 +68,7 @@ class FoodDetailActivity : AppCompatActivity() {
 
         viewModel.initialize(
             foodId = foodId,
+            favoriteFoodId = favoriteFoodId,
             name = name,
             calories = calories,
             protein = protein,
@@ -68,14 +82,65 @@ class FoodDetailActivity : AppCompatActivity() {
 
         setupUi()
         observeViewModel()
+        loadCollapsibleBanner()
     }
 
     private fun setupUi() {
         binding.btnBack.setOnClickListener { finish() }
+        binding.btnFavorite.setOnClickListener { viewModel.toggleFavorite() }
         binding.etPortion.addTextChangedListener(portionWatcher)
         binding.btnLogFood.setOnClickListener { viewModel.logFood() }
         binding.btnSaveChanges.setOnClickListener { viewModel.saveChanges() }
         setupChart()
+    }
+
+    private fun loadCollapsibleBanner() {
+        val adView = AdView(this)
+        adView.adUnitId = BANNER_AD_UNIT_ID
+        adView.setAdSize(getAdSize())
+
+        this.adView = adView
+
+        binding.adViewContainer.removeAllViews()
+        binding.adViewContainer.addView(adView)
+
+        val extras = Bundle().apply {
+            putString("collapsible", "bottom")
+        }
+
+        val adRequest = AdRequest.Builder()
+            .addNetworkExtrasBundle(AdMobAdapter::class.java, extras)
+            .build()
+
+        adView.adListener = object : AdListener() {
+            override fun onAdLoaded() {
+                Log.d("CollapsibleBanner", "Banner loaded successfully")
+            }
+
+            override fun onAdFailedToLoad(error: LoadAdError) {
+                Log.e("CollapsibleBanner", "Banner failed to load: ${error.message}")
+            }
+        }
+
+        adView.loadAd(adRequest)
+    }
+
+    private fun getAdSize(): AdSize {
+        val adWidthPixels = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = windowManager.currentWindowMetrics
+            val bounds = windowMetrics.bounds
+            bounds.width().toFloat()
+        } else {
+            val displayMetrics = DisplayMetrics()
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.getMetrics(displayMetrics)
+            displayMetrics.widthPixels.toFloat()
+        }
+
+        val density = resources.displayMetrics.density
+        val adWidth = (adWidthPixels / density).toInt()
+
+        return AdSize.getCurrentOrientationAnchoredAdaptiveBannerAdSize(this, adWidth)
     }
 
     private fun setupChart() {
@@ -94,6 +159,23 @@ class FoodDetailActivity : AppCompatActivity() {
     private fun observeViewModel() {
         collectLatestStarted(viewModel.uiState) { state ->
             binding.tvFoodName.text = state.name
+            binding.btnFavorite.isVisible = state.showFavoriteButton
+            if (state.showFavoriteButton) {
+                binding.btnFavorite.setImageResource(
+                    if (state.isFavorite) {
+                        R.drawable.ic_favorite_filled_24
+                    } else {
+                        R.drawable.ic_favorite_border_24
+                    },
+                )
+                binding.btnFavorite.contentDescription = getString(
+                    if (state.isFavorite) {
+                        R.string.remove_from_favorites
+                    } else {
+                        R.string.add_to_favorites
+                    },
+                )
+            }
             binding.tvCalories.text = getString(R.string.meal_calories_format, state.calories)
             binding.tvProtein.text = getString(R.string.macro_pill_protein, state.protein)
             binding.tvCarb.text = getString(R.string.macro_pill_carb, state.carb)
@@ -214,8 +296,24 @@ class FoodDetailActivity : AppCompatActivity() {
         return if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
     }
 
+    override fun onPause() {
+        adView?.pause()
+        super.onPause()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        adView?.resume()
+    }
+
+    override fun onDestroy() {
+        adView?.destroy()
+        super.onDestroy()
+    }
+
     companion object {
         const val EXTRA_FOOD_ID = "extra_food_id"
+        const val EXTRA_FAVORITE_FOOD_ID = "extra_favorite_food_id"
         const val EXTRA_NAME = "extra_name"
         const val EXTRA_CALORIES = "extra_calories"
         const val EXTRA_PROTEIN = "extra_protein"
@@ -238,9 +336,11 @@ class FoodDetailActivity : AppCompatActivity() {
             mealType: MealType,
             selectedDate: LocalDate,
             foodId: String? = null,
+            favoriteFoodId: String? = null,
             createdAt: String? = null,
         ): Intent = Intent(context, FoodDetailActivity::class.java).apply {
             putExtra(EXTRA_FOOD_ID, foodId)
+            putExtra(EXTRA_FAVORITE_FOOD_ID, favoriteFoodId ?: foodId)
             putExtra(EXTRA_NAME, name)
             putExtra(EXTRA_CALORIES, calories)
             putExtra(EXTRA_PROTEIN, protein)

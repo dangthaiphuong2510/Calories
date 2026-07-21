@@ -18,8 +18,10 @@
 
         <TextView
             android:id="@+id/tvFoodName"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="Chicken breast"
             android:textColor="?attr/colorOnSurface"
             android:textSize="16sp"
@@ -27,9 +29,11 @@
 
         <TextView
             android:id="@+id/tvMacros"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="P 30g · C 0g · F 3g"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp" />
@@ -42,6 +46,8 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:checkable="false"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:text="Lunch"
         android:textSize="11sp"
         app:chipBackgroundColor="@color/primary_light"
@@ -51,6 +57,8 @@
         android:id="@+id/tvCalories"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:text="165"
         android:textColor="@color/primary"
         android:textSize="16sp"

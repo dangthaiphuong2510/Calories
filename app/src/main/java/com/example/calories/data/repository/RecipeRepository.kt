@@ -10,4 +10,8 @@ interface RecipeRepository {
     ): Result<List<Recipe>>
 
     suspend fun getRecipeById(recipeId: String): Result<Recipe>
+
+    fun isRecipeUnlocked(recipeId: String): Boolean
+
+    fun unlockRecipe(recipeId: String)
 }

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="home_screen_padding">24dp</dimen>
+    <dimen name="home_calorie_ring_size">220dp</dimen>
+    <dimen name="home_calorie_ring_box">240dp</dimen>
+
+    <dimen name="screen_padding_horizontal">48dp</dimen>
+    <dimen name="screen_padding_vertical">32dp</dimen>
+    <dimen name="auth_logo_margin_top">64dp</dimen>
+    <dimen name="auth_logo_max_width">240dp</dimen>
+    <dimen name="chart_height">240dp</dimen>
+    <dimen name="pie_chart_size">240dp</dimen>
+    <dimen name="hero_image_height">280dp</dimen>
+    <dimen name="bottom_sheet_scroll_max_height">480dp</dimen>
+    <dimen name="form_max_width">480dp</dimen>
+</resources>

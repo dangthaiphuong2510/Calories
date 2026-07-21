@@ -28,5 +28,4 @@ enum class FoodSearchFilter {
 enum class FoodSearchTab {
     RECENT,
     FAVORITES,
-    MY_FOODS,
 }

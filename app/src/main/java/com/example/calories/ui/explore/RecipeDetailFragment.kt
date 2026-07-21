@@ -26,6 +26,12 @@ import com.example.calories.ui.common.collectLatestStarted
 import com.github.mikephil.charting.data.PieData
 import com.github.mikephil.charting.data.PieDataSet
 import com.github.mikephil.charting.data.PieEntry
+import com.google.android.gms.ads.AdError
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.FullScreenContentCallback
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.rewarded.RewardedAd
+import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -37,6 +43,9 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
     private val stepAdapter = RecipeStepAdapter()
 
     private var suppressPortionWatcher = false
+    private var rewardedAd: RewardedAd? = null
+
+    private val testAdUnitId = "ca-app-pub-3940256099942544/5224354917"
 
     private val portionWatcher = object : TextWatcher {
         override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -55,6 +64,7 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        loadRewardedAd()
         setupUi()
         observeViewModel()
     }
@@ -64,6 +74,7 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
         binding.btnRetry.setOnClickListener { viewModel.retry() }
         binding.etPortion.addTextChangedListener(portionWatcher)
         binding.btnAddToMeal.setOnClickListener { showMealTypePicker() }
+        binding.btnUnlockRecipe.setOnClickListener { showRewardedAdToUnlock() }
 
         binding.rvIngredients.layoutManager = LinearLayoutManager(requireContext())
         binding.rvIngredients.adapter = ingredientAdapter
@@ -90,12 +101,14 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
                     binding.contentContainer.visibility = View.GONE
                     binding.errorContainer.visibility = View.GONE
                 }
+
                 is UiState.Error -> {
                     binding.progressLoading.visibility = View.GONE
                     binding.contentContainer.visibility = View.GONE
                     binding.errorContainer.visibility = View.VISIBLE
                     binding.tvError.text = recipeState.message
                 }
+
                 is UiState.Success -> {
                     binding.progressLoading.visibility = View.GONE
                     binding.errorContainer.visibility = View.GONE
@@ -112,6 +125,10 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
             ingredientAdapter.submitList(state.scaledIngredients)
             bindChart(state)
 
+            // Update unlock overlay visibility based on state
+            binding.layoutUnlockOverlay.visibility =
+                if (state.isUnlocked) View.GONE else View.VISIBLE
+
             val portionText = formatPortion(state.portionGrams)
             if (binding.etPortion.text?.toString() != portionText) {
                 suppressPortionWatcher = true
@@ -125,6 +142,7 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
             when (event) {
                 is UiEvent.Message ->
                     Toast.makeText(requireContext(), event.text, Toast.LENGTH_SHORT).show()
+
                 is UiEvent.MessageRes ->
                     Toast.makeText(requireContext(), event.resId, Toast.LENGTH_SHORT).show()
             }
@@ -132,6 +150,54 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
 
         viewLifecycleOwner.collectLatestStarted(viewModel.addedToMeal) {
             parentFragmentManager.popBackStack()
+        }
+    }
+
+    private fun loadRewardedAd() {
+        val adRequest = AdRequest.Builder().build()
+        RewardedAd.load(
+            requireContext(),
+            testAdUnitId,
+            adRequest,
+            object : RewardedAdLoadCallback() {
+                override fun onAdLoaded(ad: RewardedAd) {
+                    rewardedAd = ad
+                }
+
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    rewardedAd = null
+                }
+            }
+        )
+    }
+
+    private fun showRewardedAdToUnlock() {
+        val ad = rewardedAd
+        if (ad != null) {
+            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    rewardedAd = null
+                    loadRewardedAd()
+                }
+
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    rewardedAd = null
+                    loadRewardedAd()
+                }
+            }
+
+            ad.show(requireActivity()) { _ ->
+                viewModel.unlockRecipe()
+                Toast.makeText(requireContext(), "Instructions unlocked!", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        } else {
+            Toast.makeText(
+                requireContext(),
+                "Ad is loading, please try again shortly!",
+                Toast.LENGTH_SHORT
+            ).show()
+            loadRewardedAd()
         }
     }
 

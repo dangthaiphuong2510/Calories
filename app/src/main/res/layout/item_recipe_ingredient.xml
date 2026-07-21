@@ -12,7 +12,10 @@
         android:id="@+id/tvIngredientName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
         android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:textColor="@color/text_primary"
         android:textSize="14sp"
         tools:text="Chicken breast" />
@@ -22,6 +25,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:textColor="@color/text_secondary"
         android:textSize="13sp"
         tools:text="150 g" />
@@ -30,6 +35,8 @@
         android:id="@+id/tvIngredientKcal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
         android:textColor="@color/primary"
         android:textSize="13sp"
         android:textStyle="bold"

@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -13,12 +14,19 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.calories.R
 import com.example.calories.databinding.ActivitySearchFoodBinding
+import com.example.calories.model.FoodDictionaryItem
 import com.example.calories.model.FoodSearchFilter
 import com.example.calories.model.FoodSearchTab
 import com.example.calories.model.enums.MealType
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
 import com.example.calories.util.DateTimeUtils
+import com.google.android.gms.ads.AdListener
+import com.google.android.gms.ads.AdLoader
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.LoadAdError
+import com.google.android.gms.ads.MobileAds
+import com.google.android.gms.ads.nativead.NativeAd
 import com.google.android.material.tabs.TabLayout
 import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
@@ -31,6 +39,7 @@ class SearchFoodActivity : AppCompatActivity() {
     private val adapter = FoodDictionaryAdapter { item -> openFoodDetail(item) }
 
     private var suppressQueryWatcher = false
+    private var nativeAd: NativeAd? = null
 
     private val foodDetailLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult(),
@@ -65,7 +74,33 @@ class SearchFoodActivity : AppCompatActivity() {
 
         viewModel.initialize(mealType, selectedDate)
         setupUi()
+
+        MobileAds.initialize(this) {
+            loadNativeAd()
+        }
+
         observeViewModel()
+    }
+
+    private fun loadNativeAd() {
+        val adLoader = AdLoader.Builder(this, "ca-app-pub-3940256099942544/2247696110")
+            .forNativeAd { ad ->
+                Log.d("AdTest", "Load Native Ad Successful")
+
+                nativeAd?.destroy()
+                nativeAd = ad
+
+                val currentResults = viewModel.uiState.value.results
+                updateAdapterList(currentResults)
+            }
+            .withAdListener(object : AdListener() {
+                override fun onAdFailedToLoad(adError: LoadAdError) {
+                    Log.e("AdTest", "Load Native Ad Failed. Error: ${adError.message}, Code: ${adError.code}")
+                }
+            })
+            .build()
+
+        adLoader.loadAd(AdRequest.Builder().build())
     }
 
     private fun setupUi() {
@@ -77,13 +112,12 @@ class SearchFoodActivity : AppCompatActivity() {
 
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_recent))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_favorites))
-        binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_my_foods))
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
-                val selected = when (tab.position) {
-                    1 -> FoodSearchTab.FAVORITES
-                    2 -> FoodSearchTab.MY_FOODS
-                    else -> FoodSearchTab.RECENT
+                val selected = if (tab.position == 1) {
+                    FoodSearchTab.FAVORITES
+                } else {
+                    FoodSearchTab.RECENT
                 }
                 viewModel.onTabSelected(selected)
             }
@@ -118,7 +152,8 @@ class SearchFoodActivity : AppCompatActivity() {
                 suppressQueryWatcher = false
             }
 
-            adapter.submitList(state.results)
+            updateAdapterList(state.results)
+
             binding.progressLoading.visibility =
                 if (state.isLoading) View.VISIBLE else View.GONE
             binding.tvEmpty.visibility =
@@ -137,7 +172,30 @@ class SearchFoodActivity : AppCompatActivity() {
         }
     }
 
-    private fun openFoodDetail(item: com.example.calories.model.FoodDictionaryItem) {
+    private fun updateAdapterList(foods: List<FoodDictionaryItem>) {
+        if (foods.isEmpty()) {
+            adapter.submitList(emptyList())
+            return
+        }
+
+        val displayItems = mutableListOf<DisplayItem>()
+        val ad = nativeAd
+
+        foods.forEachIndexed { index, foodItem ->
+            displayItems.add(DisplayItem.Food(foodItem))
+            if (ad != null && index == 2) {
+                displayItems.add(DisplayItem.Ad(ad))
+            }
+        }
+
+        if (ad != null && foods.size in 1..2) {
+            displayItems.add(DisplayItem.Ad(ad))
+        }
+
+        adapter.submitList(displayItems)
+    }
+
+    private fun openFoodDetail(item: FoodDictionaryItem) {
         val state = viewModel.uiState.value
         foodDetailLauncher.launch(
             FoodDetailActivity.intent(
@@ -150,6 +208,7 @@ class SearchFoodActivity : AppCompatActivity() {
                 servingGrams = 100.0,
                 mealType = state.mealType,
                 selectedDate = state.selectedDate,
+                favoriteFoodId = item.id,
             ),
         )
     }
@@ -159,6 +218,11 @@ class SearchFoodActivity : AppCompatActivity() {
         MealType.LUNCH -> R.string.meal_lunch
         MealType.DINNER -> R.string.meal_dinner
         MealType.SNACKS -> R.string.meal_snacks
+    }
+
+    override fun onDestroy() {
+        nativeAd?.destroy()
+        super.onDestroy()
     }
 
     companion object {

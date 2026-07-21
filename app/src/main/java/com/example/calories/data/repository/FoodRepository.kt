@@ -14,6 +14,9 @@ interface FoodRepository {
         filter: FoodSearchFilter = FoodSearchFilter.ALL,
         limit: Int = 50,
     ): List<FoodDictionaryItem>
+    fun observeFavoriteFoodIds(userId: String): Flow<Set<String>>
+    suspend fun getFavoriteFoods(userId: String): List<FoodDictionaryItem>
+    suspend fun setFavorite(userId: String, item: FoodDictionaryItem, isFavorite: Boolean)
     suspend fun addFoodEntry(
         name: String,
         calories: Int,

@@ -7,7 +7,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
-import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import com.example.calories.R
@@ -19,6 +18,7 @@ import com.example.calories.ui.common.BaseFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
 import com.google.android.material.chip.Chip
+import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -53,6 +53,7 @@ class FoodAnalysisResultFragment : BaseFragment<FragmentFoodAnalysisResultBindin
 
         setupWatchers()
         binding.btnRetake.setOnClickListener { parentFragmentManager.popBackStack() }
+        binding.btnScanAgain.setOnClickListener { parentFragmentManager.popBackStack() }
         binding.btnSaveFood.setOnClickListener {
             syncMealTypeFromDropdown()
             viewModel.saveFood()
@@ -86,10 +87,12 @@ class FoodAnalysisResultFragment : BaseFragment<FragmentFoodAnalysisResultBindin
     private fun observeViewModel() {
         viewLifecycleOwner.collectLatestStarted(viewModel.uiState) { state ->
             binding.progressAnalysis.isVisible = state.isAnalyzing
-            binding.groupAnalysisContent.isVisible = !state.isAnalyzing && state.analysis != null
+            val hasResult = state.analysis != null && !state.isAnalyzing
+            binding.groupAnalysisContent.isVisible = hasResult && state.isFoodDetected
+            binding.groupFoodNotDetected.isVisible = hasResult && !state.isFoodDetected
             binding.btnSaveFood.isEnabled = !state.isSaving
 
-            if (state.analysis == null) return@collectLatestStarted
+            if (state.analysis == null || !state.isFoodDetected) return@collectLatestStarted
 
             bindSummary(state)
             bindMacros(state)
@@ -99,9 +102,9 @@ class FoodAnalysisResultFragment : BaseFragment<FragmentFoodAnalysisResultBindin
         viewLifecycleOwner.collectLatestStarted(viewModel.events) { event ->
             when (event) {
                 is UiEvent.Message ->
-                    Toast.makeText(requireContext(), event.text, Toast.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, event.text, Snackbar.LENGTH_LONG).show()
                 is UiEvent.MessageRes ->
-                    Toast.makeText(requireContext(), event.resId, Toast.LENGTH_LONG).show()
+                    Snackbar.make(binding.root, event.resId, Snackbar.LENGTH_LONG).show()
             }
         }
         viewLifecycleOwner.collectLatestStarted(viewModel.navEvents) { event ->

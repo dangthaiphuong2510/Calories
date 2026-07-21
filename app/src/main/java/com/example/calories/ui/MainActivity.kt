@@ -3,9 +3,11 @@ package com.example.calories.ui
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.view.ViewGroup
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
@@ -16,6 +18,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.example.calories.R
 import com.example.calories.data.preferences.NotificationPreferences
 import com.example.calories.databinding.ActivityMainBinding
@@ -27,6 +30,7 @@ import com.example.calories.ui.profile.ProfileFragment
 import com.example.calories.ui.weight.WeightTrackingFragment
 import com.google.android.material.navigation.NavigationBarView
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
@@ -44,7 +48,6 @@ class MainActivity : AppCompatActivity() {
 
     private var activeTabTag: String = TAG_HOME
 
-    /** Prevents programmatic [BottomNavigationView.selectedItemId] from re-entering the listener. */
     private var suppressBottomNavSelection = false
 
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -53,23 +56,40 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+
+        lifecycleScope.launch {
+            if (!viewModel.shouldAllowAccess()) {
+                startActivity(
+                    Intent(this@MainActivity, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    },
+                )
+                finish()
+                return@launch
+            }
+            initializeMainUi(savedInstanceState)
+        }
+    }
+
+    private fun initializeMainUi(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(
+                Color.TRANSPARENT, Color.TRANSPARENT
+            ),
+            navigationBarStyle = SystemBarStyle.light(
+                Color.TRANSPARENT, Color.TRANSPARENT
+            )
+        )
+
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        if (!viewModel.isLoggedIn()) {
-            startActivity(
-                Intent(this, LoginActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                },
-            )
-            finish()
-            return
-        }
 
         ViewCompat.setOnApplyWindowInsetsListener(binding.main) { view, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            view.setPadding(systemBars.left, systemBars.top, systemBars.right, 0)
+            val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+//            val navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+
+            view.setPadding(statusBars.left, statusBars.top, statusBars.right, 0)
             insets
         }
 

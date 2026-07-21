@@ -67,6 +67,7 @@ class SearchFoodViewModel @Inject constructor(
     private var searchJob: Job? = null
 
     init {
+        observeFavorites()
         observeSearchInputs()
     }
 
@@ -100,6 +101,15 @@ class SearchFoodViewModel @Inject constructor(
         _uiState.update { it.copy(selectedFilter = filter) }
     }
 
+    private fun observeFavorites() {
+        viewModelScope.launch {
+            val id = userId ?: return@launch
+            foodRepository.observeFavoriteFoodIds(id).collect { ids ->
+                _favoriteIds.value = ids
+            }
+        }
+    }
+
     private fun observeSearchInputs() {
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
@@ -107,21 +117,26 @@ class SearchFoodViewModel @Inject constructor(
                 _query.debounce(DEBOUNCE_MS).distinctUntilChanged(),
                 _selectedTab,
                 _selectedFilter,
-            ) { query, tab, filter ->
-                Triple(query, tab, filter)
-            }.collectLatest { (query, tab, filter) ->
+                _favoriteIds,
+            ) { query, tab, filter, favoriteIds ->
+                SearchInputs(query, tab, filter, favoriteIds)
+            }.collectLatest { inputs ->
                 _uiState.update { it.copy(isLoading = true) }
                 val results = runCatching {
-                    loadResults(query = query, filter = filter, tab = tab)
+                    loadResults(
+                        query = inputs.query,
+                        filter = inputs.filter,
+                        tab = inputs.tab,
+                    )
                 }.getOrElse { emptyList() }
                 _uiState.update {
                     it.copy(
                         isLoading = false,
                         results = results,
                         isEmpty = results.isEmpty(),
-                        query = query,
-                        selectedTab = tab,
-                        selectedFilter = filter,
+                        query = inputs.query,
+                        selectedTab = inputs.tab,
+                        selectedFilter = inputs.filter,
                     )
                 }
             }
@@ -138,18 +153,11 @@ class SearchFoodViewModel @Inject constructor(
         }
 
         return when (tab) {
-            FoodSearchTab.RECENT,
-            FoodSearchTab.MY_FOODS,
-            -> loadFromUserHistory(filter)
+            FoodSearchTab.RECENT -> loadFromUserHistory(filter)
             FoodSearchTab.FAVORITES -> {
-                val favoriteIds = _favoriteIds.value
-                if (favoriteIds.isEmpty()) {
-                    emptyList()
-                } else {
-                    foodRepository.searchFoodDictionary("", FoodSearchFilter.ALL)
-                        .filter { it.id in favoriteIds }
-                        .let { applyLocalFilter(it, filter) }
-                }
+                val id = userId ?: return emptyList()
+                foodRepository.getFavoriteFoods(id)
+                    .let { applyLocalFilter(it, filter) }
             }
         }
     }
@@ -185,6 +193,13 @@ class SearchFoodViewModel @Inject constructor(
             FoodSearchFilter.LOW_FAT -> items.filter { it.fatGrams < 3 }
         }
     }
+
+    private data class SearchInputs(
+        val query: String,
+        val tab: FoodSearchTab,
+        val filter: FoodSearchFilter,
+        val favoriteIds: Set<String>,
+    )
 
     private companion object {
         const val DEBOUNCE_MS = 300L

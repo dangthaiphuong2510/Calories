@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.calories.data.network.service.GeminiAnalysisService
 import com.example.calories.model.FoodAnalysisResult
 import com.example.calories.ui.common.UiEvent
+import com.example.calories.ui.common.mapGeminiErrorToUiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,7 +56,7 @@ class FoodCameraViewModel @Inject constructor(
                 _navEvents.send(FoodCameraNavEvent.AnalysisReady(imagePath, result))
             } catch (e: Exception) {
                 _uiState.update { it.copy(isAnalyzing = false) }
-                _events.send(UiEvent.Message(e.message ?: "Could not analyze this photo"))
+                _events.send(mapGeminiErrorToUiEvent(e))
             }
         }
     }

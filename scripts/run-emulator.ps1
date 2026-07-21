@@ -31,7 +31,7 @@ $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $AppId = "com.example.calories"
-$LaunchActivity = "com.example.calories.ui.auth.LoginActivity"
+$LaunchActivity = "com.example.calories.ui.splash.SplashActivity"
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $ApkPath = Join-Path $ProjectRoot "app\build\outputs\apk\debug\app-debug.apk"
 

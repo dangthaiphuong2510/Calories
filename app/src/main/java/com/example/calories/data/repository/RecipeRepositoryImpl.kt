@@ -1,11 +1,14 @@
 package com.example.calories.data.repository
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
 import com.example.calories.model.ExploreRecipeFilter
 import com.example.calories.model.Recipe
 import com.example.calories.model.RecipeDto
 import com.example.calories.model.RecipeNutrientTag
 import com.example.calories.model.toDomain
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Columns
@@ -15,8 +18,13 @@ import javax.inject.Singleton
 
 @Singleton
 class RecipeRepositoryImpl @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val supabase: SupabaseClient,
 ) : RecipeRepository {
+
+    private val prefs: SharedPreferences by lazy {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    }
 
     override suspend fun fetchRecipes(
         query: String,
@@ -60,24 +68,23 @@ class RecipeRepositoryImpl @Inject constructor(
         Log.e(TAG, "Failed to fetch recipe id=$recipeId", error)
     }
 
+    override fun isRecipeUnlocked(recipeId: String): Boolean {
+        return prefs.getBoolean(recipeId, false)
+    }
+
+    override fun unlockRecipe(recipeId: String) {
+        prefs.edit().putBoolean(recipeId, true).apply()
+    }
+
     private fun applyClientFilter(
         recipes: List<Recipe>,
         filter: ExploreRecipeFilter,
-    ): List<Recipe> {
-        return when (filter) {
-            ExploreRecipeFilter.HIGH_PROTEIN ->
-                recipes.filter { it.nutrientTag == RecipeNutrientTag.HIGH_PROTEIN }
-            ExploreRecipeFilter.LOW_CARBS ->
-                recipes.filter { it.nutrientTag == RecipeNutrientTag.LOW_CARBS }
-            ExploreRecipeFilter.LOW_FAT ->
-                recipes.filter { it.nutrientTag == RecipeNutrientTag.LOW_FAT }
-            else -> recipes
-        }
-    }
+    ): List<Recipe> = recipes.filter { it.matchesExploreFilter(filter) }
 
     private companion object {
         const val TAG = "RecipeRepository"
         const val RECIPES_TABLE = "recipes"
+        const val PREFS_NAME = "unlocked_recipes_pref"
         const val LIST_LIMIT = 80L
 
         val recipeListColumns = Columns.raw(
@@ -117,14 +124,32 @@ private fun io.github.jan.supabase.postgrest.query.filter.PostgrestFilterBuilder
     when (filter) {
         ExploreRecipeFilter.UNDER_200 -> lt("total_kcal", 200)
         ExploreRecipeFilter.FROM_200_TO_400 -> {
-            gte("total_kcal", 200)
-            lte("total_kcal", 400)
+            and {
+                gte("total_kcal", 200)
+                lte("total_kcal", 400)
+            }
         }
         ExploreRecipeFilter.FROM_400_TO_600 -> {
-            gte("total_kcal", 401)
-            lte("total_kcal", 600)
+            and {
+                gte("total_kcal", 400)
+                lte("total_kcal", 600)
+            }
         }
         ExploreRecipeFilter.OVER_600 -> gt("total_kcal", 600)
         else -> Unit
+    }
+}
+
+private fun Recipe.matchesExploreFilter(filter: ExploreRecipeFilter): Boolean {
+    val calories = totalKcal
+    return when (filter) {
+        ExploreRecipeFilter.ALL -> true
+        ExploreRecipeFilter.UNDER_200 -> calories < 200
+        ExploreRecipeFilter.FROM_200_TO_400 -> calories >= 200 && calories <= 400
+        ExploreRecipeFilter.FROM_400_TO_600 -> calories >= 400 && calories <= 600
+        ExploreRecipeFilter.OVER_600 -> calories > 600
+        ExploreRecipeFilter.HIGH_PROTEIN -> nutrientTag == RecipeNutrientTag.HIGH_PROTEIN
+        ExploreRecipeFilter.LOW_CARBS -> nutrientTag == RecipeNutrientTag.LOW_CARBS
+        ExploreRecipeFilter.LOW_FAT -> nutrientTag == RecipeNutrientTag.LOW_FAT
     }
 }

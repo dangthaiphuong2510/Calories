@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.example.calories.data.local.CaloriesDatabase
 import com.example.calories.data.local.dao.ExerciseEntryDao
+import com.example.calories.data.local.dao.FavoriteFoodDao
 import com.example.calories.data.local.dao.FoodEntryDao
 import com.example.calories.data.local.dao.FridgeIngredientDao
 import com.example.calories.data.local.dao.ProfileDao
@@ -62,6 +63,10 @@ object DatabaseModule {
     @Provides
     fun provideProfileDao(database: CaloriesDatabase): ProfileDao =
         database.profileDao()
+
+    @Provides
+    fun provideFavoriteFoodDao(database: CaloriesDatabase): FavoriteFoodDao =
+        database.favoriteFoodDao()
 
     private const val DATABASE_NAME = "calories.db"
 }

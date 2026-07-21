@@ -1,5 +1,6 @@
 package com.example.calories.ui.profile
 
+import android.content.ActivityNotFoundException
 import android.content.DialogInterface
 import android.content.Intent
 import android.os.Bundle
@@ -12,11 +13,14 @@ import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import coil.load
 import com.example.calories.R
+import com.example.calories.ads.RewardedInterstitialAdHelper
 import com.example.calories.data.preferences.AppLanguage
 import com.example.calories.data.preferences.ThemeMode
 import com.example.calories.data.preferences.UnitSystem
@@ -27,11 +31,13 @@ import com.example.calories.ui.auth.LoginActivity
 import com.example.calories.ui.common.collectLatestStarted
 import com.example.calories.ui.notifications.NotificationSettingsActivity
 import com.example.calories.ui.onboarding.OnboardingActivity
+import com.example.calories.util.PdfReportGenerator
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class ProfileFragment : Fragment() {
@@ -40,6 +46,8 @@ class ProfileFragment : Fragment() {
     private val binding get() = _binding!!
 
     private val viewModel: ProfileViewModel by viewModels()
+
+    private var rewardedInterstitialAdHelper: RewardedInterstitialAdHelper? = null
 
     private val pickImage = registerForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -58,12 +66,14 @@ class ProfileFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        rewardedInterstitialAdHelper = RewardedInterstitialAdHelper(requireActivity()).also { it.preload() }
         setupSettingRows()
         binding.btnEditGoals.setOnClickListener {
             startActivity(Intent(requireContext(), OnboardingActivity::class.java))
         }
         binding.btnEditProfile.setOnClickListener { showEditProfileOptions() }
         binding.ivAvatar.setOnClickListener { showEditProfileOptions() }
+        binding.btnExportPdf.setOnClickListener { showReportRangeDialog() }
         observeViewModel()
     }
 
@@ -367,6 +377,68 @@ class ProfileFragment : Fragment() {
             ?.setTextColor(ContextCompat.getColor(requireContext(), R.color.error))
     }
 
+    private fun showReportRangeDialog() {
+        val options = arrayOf(
+            getString(R.string.report_range_7_days),
+            getString(R.string.report_range_30_days),
+        )
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.export_pdf_select_range)
+            .setItems(options) { _, which ->
+                val dayCount = if (which == 0) 7 else 30
+                showAdThenExport(dayCount)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showAdThenExport(dayCount: Int) {
+        val helper = rewardedInterstitialAdHelper
+        if (helper == null) {
+            generateAndSharePdf(dayCount)
+            return
+        }
+        helper.showAd { generateAndSharePdf(dayCount) }
+    }
+
+    private fun generateAndSharePdf(dayCount: Int) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val report = runCatching { viewModel.buildNutritionReport(dayCount) }
+                .getOrNull()
+            if (report == null) {
+                Toast.makeText(requireContext(), R.string.pdf_export_failed, Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val file = runCatching { PdfReportGenerator.generate(requireContext(), report) }
+                .getOrElse {
+                    Toast.makeText(requireContext(), R.string.pdf_export_failed, Toast.LENGTH_SHORT).show()
+                    return@launch
+                }
+
+            Toast.makeText(requireContext(), R.string.pdf_export_success, Toast.LENGTH_SHORT).show()
+            openPdf(file)
+        }
+    }
+
+    private fun openPdf(file: File) {
+        val context = requireContext()
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file,
+        )
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/pdf")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        try {
+            startActivity(Intent.createChooser(intent, getString(R.string.open_pdf)))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, R.string.pdf_viewer_unavailable, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun restartToLogin() {
         startActivity(
             Intent(requireContext(), LoginActivity::class.java).apply {
@@ -380,6 +452,8 @@ class ProfileFragment : Fragment() {
         (value * resources.displayMetrics.density).roundToInt()
 
     override fun onDestroyView() {
+        rewardedInterstitialAdHelper?.destroy()
+        rewardedInterstitialAdHelper = null
         super.onDestroyView()
         _binding = null
     }

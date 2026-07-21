@@ -59,6 +59,7 @@ class ExploreViewModel @Inject constructor(
     }
 
     fun onFilterSelected(filter: ExploreRecipeFilter) {
+        if (_selectedFilter.value == filter) return
         _selectedFilter.value = filter
         _uiState.update { it.copy(selectedFilter = filter) }
     }

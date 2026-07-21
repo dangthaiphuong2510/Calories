@@ -13,4 +13,16 @@
     <dimen name="home_calorie_ring_box">220dp</dimen>
     <dimen name="nav_camera_fab_size">56dp</dimen>
     <dimen name="nav_camera_fab_margin_top">6dp</dimen>
+
+    <!-- Responsive layout -->
+    <dimen name="screen_padding_horizontal">24dp</dimen>
+    <dimen name="screen_padding_vertical">24dp</dimen>
+    <dimen name="auth_logo_margin_top">48dp</dimen>
+    <dimen name="auth_logo_max_width">200dp</dimen>
+    <dimen name="button_height_primary">56dp</dimen>
+    <dimen name="chart_height">200dp</dimen>
+    <dimen name="pie_chart_size">200dp</dimen>
+    <dimen name="hero_image_height">200dp</dimen>
+    <dimen name="bottom_sheet_scroll_max_height">360dp</dimen>
+    <dimen name="form_max_width">600dp</dimen>
 </resources>
