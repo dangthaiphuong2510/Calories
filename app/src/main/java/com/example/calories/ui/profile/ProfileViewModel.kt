@@ -5,14 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.example.calories.R
 import com.example.calories.data.preferences.AppLanguage
 import com.example.calories.data.preferences.AppPreferences
+import com.example.calories.data.preferences.AuthDataStore
 import com.example.calories.data.preferences.AvatarStorage
 import com.example.calories.data.preferences.LocalDataWiper
 import com.example.calories.data.preferences.ThemeMode
 import com.example.calories.data.preferences.UnitSystem
+import com.example.calories.data.repository.FoodRepository
 import com.example.calories.data.repository.ProfileRepository
 import com.example.calories.data.repository.UserGoalsRepository
+import com.example.calories.data.repository.WaterRepository
+import com.example.calories.model.NutritionReportData
 import com.example.calories.model.Profile
 import com.example.calories.model.UserGoal
+import com.example.calories.util.DateTimeUtils
 import com.example.calories.model.enums.ActivityLevel
 import com.example.calories.model.enums.Gender
 import com.example.calories.model.enums.GoalType
@@ -33,6 +38,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.contentOrNull
@@ -74,7 +80,10 @@ class ProfileViewModel @Inject constructor(
     private val supabase: SupabaseClient,
     private val userGoalsRepository: UserGoalsRepository,
     private val profileRepository: ProfileRepository,
+    private val foodRepository: FoodRepository,
+    private val waterRepository: WaterRepository,
     private val appPreferences: AppPreferences,
+    private val authDataStore: AuthDataStore,
     private val localDataWiper: LocalDataWiper,
     private val avatarStorage: AvatarStorage,
 ) : ViewModel() {
@@ -208,6 +217,7 @@ class ProfileViewModel @Inject constructor(
     fun signOut() {
         viewModelScope.launch {
             runCatching { supabase.auth.signOut() }
+            authDataStore.clearLoginState()
             _navEvents.send(ProfileNavEvent.SignedOut)
         }
     }
@@ -218,8 +228,38 @@ class ProfileViewModel @Inject constructor(
                 localDataWiper.wipeAll()
                 supabase.auth.signOut()
             }
+            authDataStore.clearLoginState()
             _navEvents.send(ProfileNavEvent.DataWiped)
         }
+    }
+
+    suspend fun buildNutritionReport(dayCount: Int): NutritionReportData? {
+        val id = userId ?: return null
+        if (dayCount <= 0) return null
+
+        val state = uiState.value
+        val endDate = DateTimeUtils.today()
+        val startDate = endDate.minusDays((dayCount - 1).toLong())
+        val startInclusive = DateTimeUtils.dayRange(startDate).first
+        val endExclusive = DateTimeUtils.dayRange(endDate.plusDays(1)).first
+
+        val foods = foodRepository.observeFoodEntries(id).first()
+            .filter { it.createdAt >= startInclusive && it.createdAt < endExclusive }
+        val totalWaterMl = waterRepository.observeWaterEntries(id).first()
+            .filter { it.createdAt >= startInclusive && it.createdAt < endExclusive }
+            .sumOf { it.amountMl }
+
+        return NutritionReportData(
+            userName = state.userName,
+            dateRangeText = "${DateTimeUtils.formatDdMmYyyy(startDate)} – " +
+                DateTimeUtils.formatDdMmYyyy(endDate),
+            targetCaloriesPerDay = state.goal?.dailyCalories ?: 0,
+            avgCaloriesIntake = foods.sumOf { it.calories } / dayCount,
+            avgProteinGrams = foods.sumOf { it.protein } / dayCount,
+            avgCarbsGrams = foods.sumOf { it.carb } / dayCount,
+            avgFatGrams = foods.sumOf { it.fat } / dayCount,
+            totalWaterMl = totalWaterMl,
+        )
     }
 
     fun goalTypeLabelRes(goalType: GoalType): Int = when (goalType) {

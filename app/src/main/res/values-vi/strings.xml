@@ -93,6 +93,9 @@
     <string name="log_weight">Ghi cân nặng</string>
     <string name="weight_kg">Cân nặng (kg)</string>
     <string name="weight_history">Lịch sử</string>
+    <string name="weight_history_see_all">Xem tất cả</string>
+    <string name="weight_history_show_less">Thu gọn</string>
+    <string name="weight_history_toggle">Mở rộng hoặc thu gọn lịch sử cân nặng</string>
     <string name="empty_weight">Chưa có dữ liệu cân nặng</string>
     <string name="weight_chart">Xu hướng</string>
     <string name="current_weight_label">Hiện tại</string>
@@ -105,4 +108,36 @@
     <string name="weekly_macro_distribution">Phân bố macro tuần</string>
     <string name="legend_calories_consumed">Đã nạp</string>
     <string name="legend_calories_burned">Đã đốt</string>
+
+    <!-- Camera / food scan -->
+    <string name="food_not_detected_title">Không nhận diện được món ăn</string>
+    <string name="food_not_detected_subtitle">Không tìm thấy món ăn hoặc đồ uống trong ảnh. Vui lòng quét lại với ảnh rõ hơn.</string>
+    <string name="food_scan_photo_tips_title">Mẹo chụp ảnh</string>
+    <string name="food_scan_photo_tip_1">Đặt món ăn vào giữa khung hình</string>
+    <string name="food_scan_photo_tip_2">Chụp trong điều kiện đủ sáng</string>
+    <string name="food_scan_photo_tip_3">Tránh che khuất món ăn và giữ ảnh nét</string>
+    <string name="scan_again">Quét lại</string>
+    <string name="camera_permission_title">Quyền truy cập camera</string>
+    <string name="camera_permission_rationale">Ứng dụng cần quyền camera để quét món ăn và ước tính calo từ ảnh.</string>
+    <string name="camera_permission_settings_message">Quyền camera đã bị từ chối. Mở Cài đặt để cấp quyền camera cho Calories.</string>
+    <string name="gallery_permission_title">Quyền truy cập thư viện ảnh</string>
+    <string name="gallery_permission_rationale">Ứng dụng cần quyền truy cập thư viện ảnh để chọn ảnh món ăn phân tích.</string>
+    <string name="gallery_permission_settings_message">Quyền truy cập thư viện ảnh đã bị từ chối. Mở Cài đặt để cấp quyền cho Calories.</string>
+    <string name="open_settings">Mở Cài đặt</string>
+    <string name="allow">Cho phép</string>
+    <string name="error_no_internet">Không có kết nối internet. Vui lòng kiểm tra mạng và thử lại.</string>
+    <string name="error_network_timeout">Yêu cầu đã hết thời gian chờ. Vui lòng kiểm tra kết nối và thử lại.</string>
+    <string name="error_network_connection">Không thể kết nối máy chủ. Vui lòng kiểm tra mạng và thử lại.</string>
+
+    <!-- Profile / PDF export -->
+    <string name="nutrition_report">Báo cáo dinh dưỡng</string>
+    <string name="export_pdf">Xuất PDF</string>
+    <string name="export_pdf_description">Tạo báo cáo PDF tóm tắt calo, macro và nước uống trong khoảng thời gian bạn chọn.</string>
+    <string name="export_pdf_select_range">Chọn khoảng thời gian</string>
+    <string name="report_range_7_days">7 ngày gần nhất</string>
+    <string name="report_range_30_days">30 ngày gần nhất</string>
+    <string name="pdf_export_failed">Không thể tạo báo cáo dinh dưỡng.</string>
+    <string name="pdf_export_success">Báo cáo dinh dưỡng đã sẵn sàng.</string>
+    <string name="open_pdf">Mở PDF</string>
+    <string name="pdf_viewer_unavailable">Không tìm thấy ứng dụng xem PDF trên thiết bị.</string>
 </resources>

@@ -9,6 +9,7 @@ import com.example.calories.data.repository.FoodRepository
 import com.example.calories.model.FoodAnalysisResult
 import com.example.calories.model.enums.MealType
 import com.example.calories.ui.common.UiEvent
+import com.example.calories.ui.common.mapGeminiErrorToUiEvent
 import com.example.calories.util.DateTimeUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -35,6 +36,7 @@ data class OriginalFoodData(
 data class FoodAnalysisResultUiState(
     val isAnalyzing: Boolean = true,
     val isSaving: Boolean = false,
+    val isFoodDetected: Boolean = true,
     val analysis: FoodAnalysisResult? = null,
     val originalData: OriginalFoodData? = null,
     val foodName: String = "",
@@ -84,7 +86,7 @@ class FoodAnalysisResultViewModel @Inject constructor(
                 applyAnalysisResult(result)
             } catch (e: Exception) {
                 _uiState.update { it.copy(isAnalyzing = false) }
-                _events.send(UiEvent.Message(e.message ?: "Could not analyze this photo"))
+                _events.send(mapGeminiErrorToUiEvent(e))
             }
         }
     }
@@ -95,6 +97,17 @@ class FoodAnalysisResultViewModel @Inject constructor(
     }
 
     private fun applyAnalysisResult(result: FoodAnalysisResult) {
+        if (!result.isFoodDetected) {
+            _uiState.update {
+                it.copy(
+                    isAnalyzing = false,
+                    isFoodDetected = false,
+                    analysis = result,
+                )
+            }
+            return
+        }
+
         val original = OriginalFoodData(
             calories = result.calories,
             proteinGrams = result.proteinGrams,
@@ -105,6 +118,7 @@ class FoodAnalysisResultViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 isAnalyzing = false,
+                isFoodDetected = true,
                 analysis = result,
                 originalData = original,
                 foodName = result.foodName,

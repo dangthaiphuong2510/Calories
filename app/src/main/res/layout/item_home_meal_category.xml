@@ -30,8 +30,10 @@
 
                 <TextView
                     android:id="@+id/tvMealCategoryTitle"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -39,9 +41,11 @@
 
                 <TextView
                     android:id="@+id/tvMealCategoryCalories"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
                     android:textAppearance="@style/TextAppearance.Calories.Home.Secondary"
                     tools:text="420 kcal" />
             </LinearLayout>

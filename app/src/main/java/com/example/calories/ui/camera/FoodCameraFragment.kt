@@ -1,13 +1,13 @@
 package com.example.calories.ui.camera
 
-import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
@@ -15,6 +15,8 @@ import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -25,6 +27,9 @@ import com.example.calories.model.FoodAnalysisResult
 import com.example.calories.ui.common.BaseFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
+import com.example.calories.util.MediaPermissions
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.snackbar.Snackbar
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -43,6 +48,8 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
     private lateinit var cameraExecutor: ExecutorService
     private var scanInterstitialAdHelper: ScanInterstitialAdHelper? = null
     private var pendingResultNavigation: Pair<String, FoodAnalysisResult>? = null
+    private var cameraPermissionDeniedOnce = false
+    private var galleryPermissionDeniedOnce = false
 
     private val galleryLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent(),
@@ -50,15 +57,23 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
         uri?.let(::handleGalleryImage)
     }
 
-    private val permissionLauncher = registerForActivityResult(
+    private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
         if (granted) {
             startCamera()
         } else {
-            Toast.makeText(requireContext(), R.string.camera_permission_required, Toast.LENGTH_LONG)
-                .show()
-            parentFragmentManager.popBackStack()
+            handleCameraPermissionDenied()
+        }
+    }
+
+    private val galleryPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            launchGalleryPicker()
+        } else {
+            handleGalleryPermissionDenied()
         }
     }
 
@@ -72,19 +87,19 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
         cameraExecutor = Executors.newSingleThreadExecutor()
         scanInterstitialAdHelper = ScanInterstitialAdHelper(requireActivity())
 
+        ViewCompat.setOnApplyWindowInsetsListener(binding.headerContainer) { headerView, insets ->
+            val statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            headerView.setPadding(0, statusBarHeight, 0, 0)
+            insets
+        }
+        binding.headerContainer.requestApplyInsets()
+
         binding.btnCloseCamera.setOnClickListener { parentFragmentManager.popBackStack() }
         binding.fabCapture.setOnClickListener { capturePhoto() }
-        binding.fabGallery.setOnClickListener { galleryLauncher.launch("image/*") }
+        binding.fabGallery.setOnClickListener { requestGalleryAccess() }
         binding.fabFlipCamera.setOnClickListener { flipCamera() }
         observeViewModel()
-
-        when {
-            ContextCompat.checkSelfPermission(
-                requireContext(),
-                Manifest.permission.CAMERA,
-            ) == PackageManager.PERMISSION_GRANTED -> startCamera()
-            else -> permissionLauncher.launch(Manifest.permission.CAMERA)
-        }
+        ensureCameraPermission()
     }
 
     private fun observeViewModel() {
@@ -101,12 +116,7 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
             }
         }
         viewLifecycleOwner.collectLatestStarted(viewModel.events) { event ->
-            when (event) {
-                is UiEvent.Message ->
-                    Toast.makeText(requireContext(), event.text, Toast.LENGTH_LONG).show()
-                is UiEvent.MessageRes ->
-                    Toast.makeText(requireContext(), event.resId, Toast.LENGTH_LONG).show()
-            }
+            showUiEvent(event)
         }
         viewLifecycleOwner.collectLatestStarted(viewModel.navEvents) { event ->
             when (event) {
@@ -115,14 +125,22 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
         }
     }
 
-    /**
-     * Analysis is complete — load the interstitial first, show it only on [onAdLoaded],
-     * and navigate to the food detail screen from [onAdDismissedFullScreenContent].
-     */
+    private fun showUiEvent(event: UiEvent) {
+        val message = when (event) {
+            is UiEvent.Message -> event.text
+            is UiEvent.MessageRes -> getString(event.resId)
+        }
+        Snackbar.make(binding.root, message, Snackbar.LENGTH_LONG).show()
+    }
+
     private fun showInterstitialThenNavigate(event: FoodCameraNavEvent.AnalysisReady) {
         if (pendingResultNavigation != null) return
 
         pendingResultNavigation = event.imagePath to event.result
+
+        // Ẩn UI Header đi để tránh bị soi qua AdMob Activity
+        binding.headerContainer.isVisible = false
+
         val helper = scanInterstitialAdHelper ?: return navigateToFoodDetail()
 
         helper.loadAndShow(
@@ -136,6 +154,8 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
         pendingResultNavigation = null
         viewModel.onAnalysisFlowComplete()
 
+        binding.headerContainer.isVisible = true
+
         parentFragmentManager.beginTransaction()
             .replace(
                 R.id.navHostFragment,
@@ -146,6 +166,134 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
             )
             .addToBackStack("food_analysis")
             .commit()
+    }
+
+    private fun ensureCameraPermission() {
+        when {
+            hasCameraPermission() -> startCamera()
+            shouldShowCameraRationale() -> showCameraRationaleDialog()
+            else -> cameraPermissionLauncher.launch(MediaPermissions.CAMERA)
+        }
+    }
+
+    private fun handleCameraPermissionDenied() {
+        when {
+            shouldShowCameraRationale() -> showCameraRationaleDialog()
+            cameraPermissionDeniedOnce -> showCameraSettingsDialog()
+            else -> {
+                cameraPermissionDeniedOnce = true
+                showCameraRationaleDialog()
+            }
+        }
+    }
+
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            requireContext(),
+            MediaPermissions.CAMERA,
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun shouldShowCameraRationale(): Boolean {
+        return shouldShowRequestPermissionRationale(MediaPermissions.CAMERA)
+    }
+
+    private fun showCameraRationaleDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.camera_permission_title)
+            .setMessage(R.string.camera_permission_rationale)
+            .setPositiveButton(R.string.allow) { _, _ ->
+                cameraPermissionLauncher.launch(MediaPermissions.CAMERA)
+            }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                parentFragmentManager.popBackStack()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun showCameraSettingsDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.camera_permission_title)
+            .setMessage(R.string.camera_permission_settings_message)
+            .setPositiveButton(R.string.open_settings) { _, _ ->
+                openAppSettings()
+            }
+            .setNegativeButton(R.string.cancel) { _, _ ->
+                parentFragmentManager.popBackStack()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun requestGalleryAccess() {
+        val permission = MediaPermissions.galleryPermission
+        if (permission == null || hasGalleryPermission()) {
+            launchGalleryPicker()
+            return
+        }
+
+        when {
+            shouldShowGalleryRationale(permission) -> showGalleryRationaleDialog(permission)
+            galleryPermissionDeniedOnce -> showGallerySettingsDialog()
+            else -> galleryPermissionLauncher.launch(permission)
+        }
+    }
+
+    private fun handleGalleryPermissionDenied() {
+        val permission = MediaPermissions.galleryPermission ?: return
+        when {
+            shouldShowGalleryRationale(permission) -> showGalleryRationaleDialog(permission)
+            galleryPermissionDeniedOnce -> showGallerySettingsDialog()
+            else -> {
+                galleryPermissionDeniedOnce = true
+                showGalleryRationaleDialog(permission)
+            }
+        }
+    }
+
+    private fun hasGalleryPermission(): Boolean {
+        val permission = MediaPermissions.galleryPermission ?: return true
+        return ContextCompat.checkSelfPermission(requireContext(), permission) ==
+                PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun shouldShowGalleryRationale(permission: String): Boolean {
+        return shouldShowRequestPermissionRationale(permission)
+    }
+
+    private fun showGalleryRationaleDialog(permission: String) {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.gallery_permission_title)
+            .setMessage(R.string.gallery_permission_rationale)
+            .setPositiveButton(R.string.allow) { _, _ ->
+                galleryPermissionLauncher.launch(permission)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun showGallerySettingsDialog() {
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.gallery_permission_title)
+            .setMessage(R.string.gallery_permission_settings_message)
+            .setPositiveButton(R.string.open_settings) { _, _ ->
+                openAppSettings()
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun openAppSettings() {
+        val intent = Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.fromParts("package", requireContext().packageName, null),
+        )
+        startActivity(intent)
+    }
+
+    private fun launchGalleryPicker() {
+        galleryLauncher.launch("image/*")
     }
 
     private fun startCamera() {
@@ -171,7 +319,11 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
                         imageCapture,
                     )
                 } catch (e: Exception) {
-                    Toast.makeText(requireContext(), e.message, Toast.LENGTH_LONG).show()
+                    Snackbar.make(
+                        binding.root,
+                        e.message ?: getString(R.string.error_analyze_food),
+                        Snackbar.LENGTH_LONG,
+                    ).show()
                 }
             },
             ContextCompat.getMainExecutor(requireContext()),
@@ -195,10 +347,10 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
             if (imageFile != null) {
                 viewModel.openAnalysis(imageFile.absolutePath)
             } else {
-                Toast.makeText(
-                    requireContext(),
+                Snackbar.make(
+                    binding.root,
                     R.string.error_load_gallery_image,
-                    Toast.LENGTH_LONG,
+                    Snackbar.LENGTH_LONG,
                 ).show()
             }
         }
@@ -206,7 +358,8 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
 
     private fun copyUriToCache(uri: Uri): File? {
         return try {
-            val cacheFile = File(requireContext().cacheDir, "gallery_${System.currentTimeMillis()}.jpg")
+            val cacheFile =
+                File(requireContext().cacheDir, "gallery_${System.currentTimeMillis()}.jpg")
             requireContext().contentResolver.openInputStream(uri)?.use { input ->
                 cacheFile.outputStream().use { output -> input.copyTo(output) }
             } ?: return null
@@ -226,15 +379,17 @@ class FoodCameraFragment : BaseFragment<FragmentFoodCameraBinding>() {
             cameraExecutor,
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                    viewLifecycleOwner.lifecycleScope.launch {
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
                         viewModel.openAnalysis(photoFile.absolutePath)
                     }
                 }
 
                 override fun onError(exception: ImageCaptureException) {
-                    viewModel.onCaptureFailed(
-                        exception.message ?: getString(R.string.error_analyze_food),
-                    )
+                    viewLifecycleOwner.lifecycleScope.launch(Dispatchers.Main) {
+                        viewModel.onCaptureFailed(
+                            exception.message ?: getString(R.string.error_analyze_food),
+                        )
+                    }
                 }
             },
         )

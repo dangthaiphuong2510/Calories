@@ -1,6 +1,7 @@
 package com.example.calories
 
 import android.app.Application
+import com.example.calories.ads.AppOpenAdManager
 import com.example.calories.data.preferences.AppPreferences
 import com.example.calories.notifications.ReminderScheduler
 import com.google.android.gms.ads.MobileAds
@@ -16,9 +17,14 @@ class CaloriesApplication : Application() {
     @Inject
     lateinit var appPreferences: AppPreferences
 
+    lateinit var appOpenAdManager: AppOpenAdManager
+        private set
+
     override fun onCreate() {
         super.onCreate()
-        MobileAds.initialize(this)
+        MobileAds.initialize(this) {}
+        appOpenAdManager = AppOpenAdManager(this)
+
         reminderScheduler.ensureChannel()
         appPreferences.applyStoredSettings()
     }

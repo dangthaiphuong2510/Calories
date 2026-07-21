@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Base.Theme.Calories" parent="Theme.Material3.DayNight.NoActionBar">
@@ -18,10 +17,15 @@
 
         <item name="android:windowBackground">@color/background</item>
 
+        <item name="android:statusBarColor">@android:color/transparent</item>
+
+        <item name="android:windowLightStatusBar">true</item>
+
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+
         <item name="bottomNavigationStyle">@style/Widget.Calories.BottomNavigationView</item>
 
     </style>
-
 
     <style name="Theme.Calories" parent="Base.Theme.Calories" />
 
@@ -43,8 +47,6 @@
 
     </style>
 
-
-
     <style name="Widget.Calories.BottomNavigationView" parent="Widget.Material3.BottomNavigationView">
 
         <item name="android:background">?attr/colorSurface</item>
@@ -55,8 +57,6 @@
 
     </style>
 
-
-
     <style name="TextAppearance.Calories.Home.SectionTitle" parent="TextAppearance.Material3.TitleMedium">
 
         <item name="android:textColor">?attr/colorOnSurface</item>
@@ -65,15 +65,11 @@
 
     </style>
 
-
-
     <style name="TextAppearance.Calories.Home.Secondary" parent="TextAppearance.Material3.BodySmall">
 
         <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
 
     </style>
-
-
 
     <style name="Widget.Calories.Home.IconButton" parent="Widget.Material3.Button.IconButton.Filled">
 
@@ -103,8 +99,6 @@
 
     </style>
 
-
-
     <style name="ThemeOverlay.Calories.MaterialCalendar" parent="@style/ThemeOverlay.Material3.MaterialCalendar">
 
         <item name="colorPrimary">@color/primary</item>
@@ -112,8 +106,6 @@
         <item name="colorOnPrimary">@color/white</item>
 
     </style>
-
-
 
     <style name="ShapeAppearance.Calories.Circle" parent="">
 
@@ -124,4 +116,3 @@
     </style>
 
 </resources>
-

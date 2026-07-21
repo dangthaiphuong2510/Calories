@@ -135,7 +135,7 @@
                 <com.github.mikephil.charting.charts.LineChart
                     android:id="@+id/weightChart"
                     android:layout_width="match_parent"
-                    android:layout_height="220dp"
+                    android:layout_height="@dimen/chart_height"
                     android:padding="8dp" />
             </com.google.android.material.card.MaterialCardView>
 
@@ -274,7 +274,7 @@
                     <com.github.mikephil.charting.charts.BarChart
                         android:id="@+id/calorieTrendChart"
                         android:layout_width="match_parent"
-                        android:layout_height="240dp"
+                        android:layout_height="@dimen/chart_height"
                         android:layout_marginTop="8dp" />
 
                     <View
@@ -296,7 +296,7 @@
                     <com.github.mikephil.charting.charts.PieChart
                         android:id="@+id/macroDistributionChart"
                         android:layout_width="match_parent"
-                        android:layout_height="220dp"
+                        android:layout_height="@dimen/chart_height"
                         android:layout_marginTop="8dp" />
 
                     <LinearLayout

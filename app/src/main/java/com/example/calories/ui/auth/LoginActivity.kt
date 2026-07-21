@@ -42,12 +42,13 @@ class LoginActivity : AppCompatActivity() {
         binding.btnGoogleLogin.setOnClickListener { startGoogleSignIn() }
         binding.tvForgotPassword.setOnClickListener {
             val email = binding.etEmail.text?.toString()?.trim().orEmpty()
-            if (email.isBlank() || !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-                binding.tilEmail.error = getString(R.string.error_email_invalid)
-                return@setOnClickListener
-            }
-            binding.tilEmail.error = null
-            viewModel.resetPassword(email)
+            startActivity(
+                Intent(this, ForgotPasswordActivity::class.java).apply {
+                    if (email.isNotBlank()) {
+                        putExtra(ForgotPasswordActivity.EXTRA_EMAIL, email)
+                    }
+                },
+            )
         }
         binding.tvGoToRegister.setOnClickListener {
             startActivity(Intent(this, RegisterActivity::class.java))

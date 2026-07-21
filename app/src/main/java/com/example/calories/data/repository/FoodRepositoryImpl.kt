@@ -1,9 +1,12 @@
 package com.example.calories.data.repository
 
 import android.util.Log
+import com.example.calories.data.local.dao.FavoriteFoodDao
 import com.example.calories.data.local.dao.FoodEntryDao
+import com.example.calories.data.local.mapper.toDictionaryItem
 import com.example.calories.data.local.mapper.toDomain
 import com.example.calories.data.local.mapper.toEntity
+import com.example.calories.data.local.mapper.toFavoriteEntity
 import com.example.calories.model.FoodDictionaryItem
 import com.example.calories.model.FoodEntry
 import com.example.calories.model.FoodSearchFilter
@@ -21,6 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class FoodRepositoryImpl @Inject constructor(
     private val foodEntryDao: FoodEntryDao,
+    private val favoriteFoodDao: FavoriteFoodDao,
     private val supabase: SupabaseClient,
 ) : FoodRepository {
 
@@ -65,6 +69,27 @@ class FoodRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to search food_dictionary query=$trimmed filter=$filter", e)
             emptyList()
+        }
+    }
+
+    override fun observeFavoriteFoodIds(userId: String): Flow<Set<String>> {
+        return favoriteFoodDao.observeFavoriteIds(userId)
+            .map { ids -> ids.toSet() }
+    }
+
+    override suspend fun getFavoriteFoods(userId: String): List<FoodDictionaryItem> {
+        return favoriteFoodDao.getAll(userId).map { it.toDictionaryItem() }
+    }
+
+    override suspend fun setFavorite(
+        userId: String,
+        item: FoodDictionaryItem,
+        isFavorite: Boolean,
+    ) {
+        if (isFavorite) {
+            favoriteFoodDao.upsert(item.toFavoriteEntity(userId))
+        } else {
+            favoriteFoodDao.delete(userId, item.id)
         }
     }
 

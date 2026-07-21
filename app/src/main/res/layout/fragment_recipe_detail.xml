@@ -49,7 +49,7 @@
         <ImageView
             android:id="@+id/ivRecipeHero"
             android:layout_width="match_parent"
-            android:layout_height="220dp"
+            android:layout_height="@dimen/hero_image_height"
             android:layout_marginTop="8dp"
             android:background="?attr/colorSurface"
             android:contentDescription="@null"
@@ -65,11 +65,14 @@
             android:visibility="gone"
             tools:visibility="visible">
 
+            <!-- Title & Meta Information -->
             <TextView
                 android:id="@+id/tvRecipeName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
+                android:ellipsize="end"
+                android:maxLines="2"
                 android:textColor="@color/text_primary"
                 android:textSize="22sp"
                 android:textStyle="bold"
@@ -80,14 +83,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="2"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp"
                 tools:text="Easy · Prep 10m · Cook 20m" />
 
             <com.github.mikephil.charting.charts.PieChart
                 android:id="@+id/chartMacros"
-                android:layout_width="220dp"
-                android:layout_height="220dp"
+                android:layout_width="@dimen/pie_chart_size"
+                android:layout_height="@dimen/pie_chart_size"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginTop="16dp" />
 
@@ -166,6 +171,7 @@
                     tools:text="100" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <!-- Ingredients Section (Free Content) -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -182,6 +188,7 @@
                 tools:itemCount="3"
                 tools:listitem="@layout/item_recipe_ingredient" />
 
+            <!-- Recipe Steps Section (Locked with Rewarded Ad Overlay) -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -189,14 +196,52 @@
                 android:text="@string/recipe_steps_title"
                 android:textAppearance="@style/TextAppearance.Calories.Home.SectionTitle" />
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/rvSteps"
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/layoutStepsContainer"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:nestedScrollingEnabled="false"
-                tools:itemCount="2"
-                tools:listitem="@layout/item_recipe_step" />
+                android:layout_marginTop="8dp">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/rvSteps"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent"
+                    tools:itemCount="3"
+                    tools:listitem="@layout/item_recipe_step" />
+
+                <!-- Rewarded Ad Unlock Button -->
+                <RelativeLayout
+                    android:id="@+id/layoutUnlockOverlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:background="@drawable/bg_gradient_white_overlay"
+                    android:paddingTop="24dp"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnUnlockRecipe"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentBottom="true"
+                        android:layout_centerHorizontal="true"
+                        android:layout_marginBottom="8dp"
+                        android:text="Unlock Instructions (Watch Ad)"
+                        android:textAllCaps="false"
+                        android:textColor="@color/white"
+                        app:backgroundTint="#4CAF50"
+                        app:cornerRadius="24dp"
+                        app:icon="@drawable/ic_lock"
+                        app:iconTint="@color/white" />
+                </RelativeLayout>
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAddToMeal"
@@ -208,6 +253,7 @@
                 app:cornerRadius="12dp" />
         </LinearLayout>
 
+        <!-- Loading State Indicator -->
         <ProgressBar
             android:id="@+id/progressLoading"
             android:layout_width="wrap_content"
@@ -217,6 +263,7 @@
             android:visibility="gone"
             tools:visibility="visible" />
 
+        <!-- Error State Layout -->
         <LinearLayout
             android:id="@+id/errorContainer"
             android:layout_width="match_parent"

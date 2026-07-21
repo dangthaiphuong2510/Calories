@@ -6,8 +6,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.transition.AutoTransition
+import androidx.transition.TransitionManager
 import com.example.calories.R
 import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.databinding.DialogAddWeightBinding
@@ -28,6 +31,7 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
     private val viewModel: WeightTrackingViewModel by viewModels()
     private val adapter = WeightEntryAdapter()
     private var currentUnitSystem: UnitSystem = UnitSystem.METRIC
+    private var lastHistoryExpanded: Boolean? = null
 
     override fun inflateBinding(
         inflater: LayoutInflater,
@@ -40,6 +44,7 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
         binding.rvWeightEntries.layoutManager = LinearLayoutManager(requireContext())
         binding.rvWeightEntries.adapter = adapter
         binding.fabLogWeight.setOnClickListener { showLogWeightDialog() }
+        binding.btnToggleHistory.setOnClickListener { viewModel.toggleHistoryExpanded() }
         setupNutritionControls()
         observeViewModel()
     }
@@ -74,7 +79,7 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
                 UnitConverter.formatWeight(requireContext(), state.currentWeightKg, state.unitSystem)
             binding.tvTargetWeight.text =
                 UnitConverter.formatWeight(requireContext(), state.targetWeightKg, state.unitSystem)
-            adapter.submitList(state.entries, state.unitSystem)
+            bindWeightHistory(state)
             WeightChartHelper.bind(
                 chart = binding.weightChart,
                 entries = state.entries,
@@ -127,6 +132,41 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
                     Toast.makeText(requireContext(), event.resId, Toast.LENGTH_LONG).show()
             }
         }
+    }
+
+    private fun bindWeightHistory(state: WeightUiState) {
+        val animate = lastHistoryExpanded != null && lastHistoryExpanded != state.isHistoryExpanded
+        lastHistoryExpanded = state.isHistoryExpanded
+
+        if (animate) {
+            TransitionManager.beginDelayedTransition(
+                binding.historySection,
+                AutoTransition().apply { duration = HISTORY_ANIMATION_MS },
+            )
+        }
+
+        val canToggle = state.canToggleHistory()
+        binding.btnToggleHistory.isVisible = canToggle
+        if (canToggle) {
+            binding.tvToggleHistory.setText(
+                if (state.isHistoryExpanded) {
+                    R.string.weight_history_show_less
+                } else {
+                    R.string.weight_history_see_all
+                },
+            )
+            val targetRotation = if (state.isHistoryExpanded) 180f else 0f
+            if (animate) {
+                binding.ivHistoryExpand.animate()
+                    .rotation(targetRotation)
+                    .setDuration(HISTORY_ANIMATION_MS)
+                    .start()
+            } else {
+                binding.ivHistoryExpand.rotation = targetRotation
+            }
+        }
+
+        adapter.submitList(state.displayedHistoryEntries(), state.unitSystem)
     }
 
     private fun syncNutritionToggle(period: NutritionPeriod) {
@@ -223,5 +263,9 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
             dialog.dismiss()
         }
         dialog.show()
+    }
+
+    private companion object {
+        const val HISTORY_ANIMATION_MS = 200L
     }
 }

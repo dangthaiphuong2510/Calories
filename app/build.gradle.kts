@@ -116,6 +116,9 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-ads:23.2.0")
     implementation("com.google.guava:guava:33.3.1-android")
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+
+    implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)

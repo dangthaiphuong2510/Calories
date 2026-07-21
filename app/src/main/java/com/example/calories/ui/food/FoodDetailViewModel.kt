@@ -7,12 +7,15 @@ import com.example.calories.data.preferences.AppLanguage
 import com.example.calories.data.preferences.AppPreferences
 import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.data.repository.FoodRepository
+import com.example.calories.model.FoodDictionaryItem
 import com.example.calories.model.FoodEntry
 import com.example.calories.model.enums.MealType
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.util.DateTimeUtils
 import com.example.calories.util.UnitConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -43,6 +46,8 @@ data class FoodDetailUiState(
     val isEditMode: Boolean = false,
     val hasChanges: Boolean = false,
     val isSaving: Boolean = false,
+    val isFavorite: Boolean = false,
+    val showFavoriteButton: Boolean = false,
     val unitSystem: UnitSystem = UnitSystem.METRIC,
     val language: AppLanguage = AppLanguage.ENGLISH,
 ) {
@@ -57,9 +62,14 @@ data class FoodDetailUiState(
 class FoodDetailViewModel @Inject constructor(
     private val foodRepository: FoodRepository,
     private val appPreferences: AppPreferences,
+    private val supabase: SupabaseClient,
 ) : ViewModel() {
 
+    private val userId: String? get() = supabase.auth.currentUserOrNull()?.id
+
     private val _foodId = MutableStateFlow<String?>(null)
+    private val _favoriteFoodId = MutableStateFlow<String?>(null)
+    private val _isFavorite = MutableStateFlow(false)
     private val _createdAt = MutableStateFlow("")
     /** Nutrient values normalized per [BASE_PORTION_GRAMS] (100 g). */
     private val _baseCalories = MutableStateFlow(0)
@@ -85,8 +95,20 @@ class FoodDetailViewModel @Inject constructor(
     val updated = _updated.receiveAsFlow()
 
     val uiState: StateFlow<FoodDetailUiState> = combine(
-        combine(_name, _mealType, _selectedDate, _foodId) { name, meal, date, foodId ->
-            Quad(name, meal, date, foodId)
+        combine(
+            combine(_name, _mealType, _selectedDate) { name, meal, date -> Triple(name, meal, date) },
+            combine(_foodId, _favoriteFoodId, _isFavorite) { foodId, favoriteFoodId, isFavorite ->
+                Triple(foodId, favoriteFoodId, isFavorite)
+            },
+        ) { identity, favorite ->
+            FavoriteIdentity(
+                name = identity.first,
+                mealType = identity.second,
+                selectedDate = identity.third,
+                foodId = favorite.first,
+                favoriteFoodId = favorite.second,
+                isFavorite = favorite.third,
+            )
         },
         combine(
             combine(_baseCalories, _baseProtein) { cals, p -> cals to p },
@@ -112,8 +134,7 @@ class FoodDetailViewModel @Inject constructor(
             PrefsBundle(originalServing, saving, unit, language)
         },
     ) { identity, bases, prefs ->
-        val (name, meal, date, foodId) = identity
-        val isEditMode = foodId != null
+        val isEditMode = identity.foodId != null
 
         val ratio = if (isEditMode) {
             bases.portionGrams / BASE_PORTION_GRAMS
@@ -133,9 +154,9 @@ class FoodDetailViewModel @Inject constructor(
         } ?: false
 
         FoodDetailUiState(
-            name = name,
-            mealType = meal,
-            selectedDate = date,
+            name = identity.name,
+            mealType = identity.mealType,
+            selectedDate = identity.selectedDate,
             portionGrams = bases.portionGrams,
             portionDisplay = UnitConverter.portionToDisplay(bases.portionGrams, prefs.unitSystem),
             calories = calories,
@@ -148,13 +169,20 @@ class FoodDetailViewModel @Inject constructor(
             isEditMode = isEditMode,
             hasChanges = hasChanges,
             isSaving = prefs.saving,
+            isFavorite = identity.isFavorite,
+            showFavoriteButton = identity.favoriteFoodId != null,
             unitSystem = prefs.unitSystem,
             language = prefs.language,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FoodDetailUiState())
 
+    init {
+        observeFavoriteState()
+    }
+
     fun initialize(
         foodId: String?,
+        favoriteFoodId: String?,
         name: String,
         calories: Int,
         protein: Double,
@@ -169,6 +197,7 @@ class FoodDetailViewModel @Inject constructor(
         _mealType.value = mealType
         _selectedDate.value = selectedDate
         _foodId.value = foodId
+        _favoriteFoodId.value = favoriteFoodId
         _createdAt.value = createdAt ?: DateTimeUtils.atNoonIso(selectedDate)
 
         val grams = servingGrams.takeIf { it > 0.0 } ?: BASE_PORTION_GRAMS
@@ -191,6 +220,38 @@ class FoodDetailViewModel @Inject constructor(
             _baseGrams.value = grams
             _portionGrams.value = BASE_PORTION_GRAMS
             _originalServingGrams.value = null
+        }
+    }
+
+    fun toggleFavorite() {
+        val id = userId ?: return
+        val favoriteFoodId = _favoriteFoodId.value ?: return
+        viewModelScope.launch {
+            val isFavorite = _isFavorite.value
+            foodRepository.setFavorite(
+                userId = id,
+                item = FoodDictionaryItem(
+                    id = favoriteFoodId,
+                    name = _name.value,
+                    calories = _baseCalories.value.toLong(),
+                    protein = _baseProtein.value,
+                    carb = _baseCarb.value,
+                    fat = _baseFat.value,
+                ),
+                isFavorite = !isFavorite,
+            )
+        }
+    }
+
+    private fun observeFavoriteState() {
+        viewModelScope.launch {
+            val id = userId ?: return@launch
+            combine(_favoriteFoodId, foodRepository.observeFavoriteFoodIds(id)) {
+                    favoriteFoodId, favoriteIds ->
+                favoriteFoodId != null && favoriteFoodId in favoriteIds
+            }.collect { isFavorite ->
+                _isFavorite.value = isFavorite
+            }
         }
     }
 
@@ -273,7 +334,14 @@ class FoodDetailViewModel @Inject constructor(
         return (calories / kcalPerMin).roundToInt().coerceAtLeast(1)
     }
 
-    private data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
+    private data class FavoriteIdentity(
+        val name: String,
+        val mealType: MealType,
+        val selectedDate: LocalDate,
+        val foodId: String?,
+        val favoriteFoodId: String?,
+        val isFavorite: Boolean,
+    )
 
     private data class ScaleInputs(
         val carb: Double,

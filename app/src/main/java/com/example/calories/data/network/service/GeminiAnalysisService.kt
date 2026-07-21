@@ -4,9 +4,12 @@ import android.graphics.Bitmap
 import android.util.Base64
 import android.util.Log
 import com.example.calories.BuildConfig
+import com.example.calories.data.network.GeminiApiException
+import com.example.calories.data.network.NetworkConnectivity
 import com.example.calories.model.FoodAnalysisResult
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -17,19 +20,37 @@ import io.ktor.http.contentType
 import io.ktor.http.encodedPath
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.ByteArrayOutputStream
+import java.io.IOException
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class GeminiAnalysisService @Inject constructor() {
+class GeminiAnalysisService @Inject constructor(
+    private val networkConnectivity: NetworkConnectivity,
+) {
 
-    private val httpClient by lazy { HttpClient(Android) }
+    private val httpClient by lazy {
+        HttpClient(Android) {
+            install(HttpTimeout) {
+                requestTimeoutMillis = REQUEST_TIMEOUT_MS
+                connectTimeoutMillis = REQUEST_TIMEOUT_MS
+                socketTimeoutMillis = REQUEST_TIMEOUT_MS
+            }
+        }
+    }
 
     suspend fun analyzeFoodImage(bitmap: Bitmap): FoodAnalysisResult = withContext(Dispatchers.IO) {
+        if (!networkConnectivity.isConnected()) {
+            throw GeminiApiException.NoInternet()
+        }
 
         require(bitmap.width > 0 && bitmap.height > 0) { "Bitmap is empty" }
 
@@ -38,12 +59,33 @@ class GeminiAnalysisService @Inject constructor() {
             error("Set GEMINI_API_KEY in local.properties (Google AI Studio key starting with AIza), then rebuild")
         }
 
+        try {
+            analyzeFoodImageInternal(bitmap, apiKey)
+        } catch (e: GeminiApiException) {
+            throw e
+        } catch (e: TimeoutCancellationException) {
+            throw GeminiApiException.Timeout()
+        } catch (e: SocketTimeoutException) {
+            throw GeminiApiException.Timeout()
+        } catch (e: UnknownHostException) {
+            throw GeminiApiException.NetworkError(e)
+        } catch (e: IOException) {
+            throw GeminiApiException.NetworkError(e)
+        }
+    }
+
+    private suspend fun analyzeFoodImageInternal(bitmap: Bitmap, apiKey: String): FoodAnalysisResult {
+
         val prompt = """
-            You are a food and nutrition analysis system.
-            Analyze the dish in the image and estimate the nutrition for the full visible serving.
-            Return JSON only matching FoodAnalysisResult.
+            You are a food and drink recognition system.
+            First, determine whether the image clearly shows food or a drink.
+            Return JSON only using these field names: is_food, food_name, calories.
+            If the image is NOT food or drink, return exactly:
+            {"is_food": false, "food_name": "None", "calories": 0}
+            If the image IS food or drink, return is_food true, a concise food_name (under 60 characters),
+            calories for the full visible serving, and also estimate:
+            estimatedWeightGrams (integer), proteinGrams, carbsGrams, fatGrams (decimals), and ingredients (string array).
             Use integers for weight and calories, decimals for macros.
-            Keep foodName concise (under 60 characters).
         """.trimIndent()
 
         val requestBody = JSONObject()
@@ -78,22 +120,25 @@ class GeminiAnalysisService @Inject constructor() {
             )
             .toString()
 
-        val response = httpClient.post {
-            url {
-                protocol = io.ktor.http.URLProtocol.HTTPS
-                host = "generativelanguage.googleapis.com"
-                encodedPath = "/v1beta/models/gemini-3.5-flash:generateContent"
+        val responseText = withTimeout(REQUEST_TIMEOUT_MS) {
+            val response = httpClient.post {
+                url {
+                    protocol = io.ktor.http.URLProtocol.HTTPS
+                    host = "generativelanguage.googleapis.com"
+                    encodedPath = "/v1beta/models/gemini-3.5-flash:generateContent"
+                }
+                header("x-goog-api-key", apiKey)
+                header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                contentType(ContentType.Application.Json)
+                setBody(requestBody)
             }
-            header("x-goog-api-key", apiKey)
-            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
-            contentType(ContentType.Application.Json)
-            setBody(requestBody)
-        }
 
-        val responseText = response.bodyAsText()
+            if (!response.status.isSuccess()) {
+                val body = response.bodyAsText()
+                throw GeminiApiException.ApiError(response.status.value, body)
+            }
 
-        if (!response.status.isSuccess()) {
-            throw IllegalStateException("Gemini API error ${response.status.value}: $responseText")
+            response.bodyAsText()
         }
 
         val modelText = extractModelText(responseText)
@@ -102,9 +147,13 @@ class GeminiAnalysisService @Inject constructor() {
 
         Log.d("GeminiDebug", "Model JSON: $modelText")
 
-        runCatching { parseFoodAnalysisResult(modelText) }.getOrElse {
+        return runCatching { parseFoodAnalysisResult(modelText) }.getOrElse {
             throw IllegalStateException("Parse error: $modelText", it)
         }
+    }
+
+    companion object {
+        private const val REQUEST_TIMEOUT_MS = 15_000L
     }
 
     private fun foodAnalysisSchema(): JSONObject {
@@ -113,9 +162,10 @@ class GeminiAnalysisService @Inject constructor() {
             .put(
                 "properties",
                 JSONObject()
-                    .put("foodName", JSONObject().put("type", "STRING"))
-                    .put("estimatedWeightGrams", JSONObject().put("type", "INTEGER"))
+                    .put("is_food", JSONObject().put("type", "BOOLEAN"))
+                    .put("food_name", JSONObject().put("type", "STRING"))
                     .put("calories", JSONObject().put("type", "INTEGER"))
+                    .put("estimatedWeightGrams", JSONObject().put("type", "INTEGER"))
                     .put("proteinGrams", JSONObject().put("type", "NUMBER"))
                     .put("carbsGrams", JSONObject().put("type", "NUMBER"))
                     .put("fatGrams", JSONObject().put("type", "NUMBER"))
@@ -129,13 +179,9 @@ class GeminiAnalysisService @Inject constructor() {
             .put(
                 "required",
                 JSONArray()
-                    .put("foodName")
-                    .put("estimatedWeightGrams")
-                    .put("calories")
-                    .put("proteinGrams")
-                    .put("carbsGrams")
-                    .put("fatGrams")
-                    .put("ingredients"),
+                    .put("is_food")
+                    .put("food_name")
+                    .put("calories"),
             )
     }
 
@@ -210,10 +256,23 @@ class GeminiAnalysisService @Inject constructor() {
 
     private fun parseFoodAnalysisResult(rawJson: String): FoodAnalysisResult {
         val json = JSONObject(rawJson)
+        val isFood = json.optBoolean("is_food", json.optBoolean("isFood", true))
+        val foodName = json.optString("food_name", json.optString("foodName", "Unknown meal"))
+        val calories = json.optInt("calories", 0)
+
+        if (!isFood || foodName.equals("None", ignoreCase = true)) {
+            return FoodAnalysisResult(
+                isFood = false,
+                foodName = "None",
+                calories = 0,
+            )
+        }
+
         return FoodAnalysisResult(
-            foodName = json.optString("foodName", "Unknown meal"),
+            isFood = true,
+            foodName = foodName,
+            calories = calories,
             estimatedWeightGrams = json.optInt("estimatedWeightGrams", 0),
-            calories = json.optInt("calories", 0),
             proteinGrams = json.optDouble("proteinGrams", 0.0).toFloat(),
             carbsGrams = json.optDouble("carbsGrams", 0.0).toFloat(),
             fatGrams = json.optDouble("fatGrams", 0.0).toFloat(),
