@@ -22,9 +22,9 @@
         android:id="@+id/bottomNavContainer"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:background="?attr/colorSurface"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:minHeight="56dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
@@ -35,12 +35,12 @@
             android:theme="@style/Theme.BottomNavIndicator"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:background="@android:color/transparent"
             android:elevation="8dp"
-            android:paddingTop="12dp"
-            android:background="@color/water_empty"
-            android:backgroundTint="@color/water_empty"
             app:labelVisibilityMode="labeled"
-            app:menu="@menu/menu_bottom_nav" >
+            app:paddingBottomSystemWindowInsets="false"
+            app:menu="@menu/menu_bottom_nav">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabCameraAi"
@@ -59,6 +59,4 @@
 
     </FrameLayout>
 
-
 </androidx.constraintlayout.widget.ConstraintLayout>
-

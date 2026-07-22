@@ -23,6 +23,9 @@
 
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
+        <!-- Edge-to-edge: activities apply insets manually; fullscreen ads temporarily use opaque bars. -->
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
+
         <item name="bottomNavigationStyle">@style/Widget.Calories.BottomNavigationView</item>
 
     </style>

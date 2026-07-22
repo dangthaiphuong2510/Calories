@@ -32,17 +32,21 @@ class ScanInterstitialAdHelper(
             object : InterstitialAdLoadCallback() {
                 override fun onAdLoaded(ad: InterstitialAd) {
                     interstitialAd = ad
-                    ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                        override fun onAdDismissedFullScreenContent() {
-                            destroy()
-                            onAdDismissed()
-                        }
+                    ad.fullScreenContentCallback = FullscreenAdWindowHelper.wrapCallback(
+                        activity,
+                        object : FullScreenContentCallback() {
+                            override fun onAdDismissedFullScreenContent() {
+                                destroy()
+                                onAdDismissed()
+                            }
 
-                        override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                            destroy()
-                            onAdUnavailable()
-                        }
-                    }
+                            override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                                destroy()
+                                onAdUnavailable()
+                            }
+                        },
+                    )
+                    FullscreenAdWindowHelper.enterFullscreenAdMode(activity)
                     ad.show(activity)
                 }
 

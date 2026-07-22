@@ -10,7 +10,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.calories.R
 import com.example.calories.databinding.ActivitySearchFoodBinding
@@ -32,7 +32,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 
 @AndroidEntryPoint
-class SearchFoodActivity : AppCompatActivity() {
+class SearchFoodActivity : BaseActivity() {
 
     private lateinit var binding: ActivitySearchFoodBinding
     private val viewModel: SearchFoodViewModel by viewModels()

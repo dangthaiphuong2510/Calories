@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import com.example.calories.R
 import com.example.calories.databinding.ActivityRegisterBinding
 import com.example.calories.ui.common.UiEvent
@@ -12,7 +12,7 @@ import com.example.calories.ui.common.collectLatestStarted
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class RegisterActivity : AppCompatActivity() {
+class RegisterActivity : BaseActivity() {
 
     private lateinit var binding: ActivityRegisterBinding
     private val viewModel: RegisterViewModel by viewModels()

@@ -2,15 +2,15 @@ package com.example.calories.ui.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.calories.R
 import com.example.calories.data.auth.AuthDestination
+import com.example.calories.data.auth.AuthError
 import com.example.calories.data.auth.AuthNavigationResolver
+import com.example.calories.data.auth.AuthRepository
+import com.example.calories.data.auth.AuthResult
+import com.example.calories.data.auth.AuthUser
 import com.example.calories.ui.common.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
-import io.github.jan.supabase.auth.providers.Google
-import io.github.jan.supabase.auth.providers.builtin.Email
-import io.github.jan.supabase.auth.providers.builtin.IDToken
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,11 +27,12 @@ data class LoginUiState(
 sealed interface LoginNavEvent {
     data object ToMain : LoginNavEvent
     data object ToOnboarding : LoginNavEvent
+    data class PromptResendConfirmation(val email: String) : LoginNavEvent
 }
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
-    private val supabase: SupabaseClient,
+    private val authRepository: AuthRepository,
     private val authNavigationResolver: AuthNavigationResolver,
 ) : ViewModel() {
 
@@ -47,21 +48,17 @@ class LoginViewModel @Inject constructor(
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            try {
-                supabase.auth.awaitInitialization()
-                supabase.auth.signInWith(Email) {
-                    this.email = email
-                    this.password = password
-                }
-                if (supabase.auth.currentUserOrNull() == null) {
+            when (val result = authRepository.signInWithEmail(email, password)) {
+                is AuthResult.Success -> completeAuthentication()
+                is AuthResult.Failure -> {
                     _uiState.update { it.copy(isLoading = false) }
-                    _events.send(UiEvent.Message("Login failed. Check email/password or confirm your email."))
-                    return@launch
+                    if (result.error == AuthError.EmailNotConfirmed) {
+                        _events.send(UiEvent.MessageRes(R.string.auth_email_not_confirmed))
+                        _navEvents.send(LoginNavEvent.PromptResendConfirmation(email))
+                    } else {
+                        _events.send(UiEvent.MessageRes(result.error.toMessageRes()))
+                    }
                 }
-                completeAuthentication()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(UiEvent.Message(e.message ?: "Login failed"))
             }
         }
     }
@@ -69,25 +66,33 @@ class LoginViewModel @Inject constructor(
     fun loginWithGoogle(idToken: String, rawNonce: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            try {
-                supabase.auth.awaitInitialization()
-                supabase.auth.signInWith(IDToken) {
-                    this.idToken = idToken
-                    provider = Google
-                    nonce = rawNonce
+            when (val result = authRepository.signInWithGoogle(idToken, rawNonce)) {
+                is AuthResult.Success -> {
+                    maybeInformAboutLinking(result.data)
+                    completeAuthentication()
                 }
-                if (supabase.auth.currentUserOrNull() == null) {
+                is AuthResult.Failure -> {
                     _uiState.update { it.copy(isLoading = false) }
-                    _events.send(UiEvent.MessageRes(com.example.calories.R.string.google_sign_in_failed))
-                    return@launch
+                    _events.send(UiEvent.MessageRes(result.error.toMessageRes()))
                 }
-                completeAuthentication()
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(
-                    UiEvent.Message(e.message ?: "Google sign-in failed"),
-                )
             }
+        }
+    }
+
+    fun resendConfirmation(email: String) {
+        viewModelScope.launch {
+            when (val result = authRepository.resendConfirmationEmail(email)) {
+                is AuthResult.Success ->
+                    _events.send(UiEvent.MessageRes(R.string.auth_confirmation_resent))
+                is AuthResult.Failure ->
+                    _events.send(UiEvent.MessageRes(result.error.toMessageRes()))
+            }
+        }
+    }
+
+    private suspend fun maybeInformAboutLinking(user: AuthUser) {
+        if (user.hasGoogleIdentity && user.hasEmailPasswordIdentity) {
+            _events.send(UiEvent.MessageRes(R.string.auth_google_linked_info))
         }
     }
 

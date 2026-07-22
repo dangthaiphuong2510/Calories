@@ -65,8 +65,20 @@
 
         <activity
             android:name=".ui.auth.ForgotPasswordActivity"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:host="reset-password"
+                    android:scheme="calories" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".ui.auth.VerifyOtpResetPasswordActivity"

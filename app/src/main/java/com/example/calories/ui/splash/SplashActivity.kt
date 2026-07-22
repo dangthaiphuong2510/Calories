@@ -3,7 +3,7 @@ package com.example.calories.ui.splash
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import com.example.calories.CaloriesApplication
 import com.example.calories.databinding.ActivitySplashBinding
 import com.example.calories.ui.MainActivity
@@ -13,7 +13,7 @@ import com.example.calories.ui.onboarding.OnboardingActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class SplashActivity : AppCompatActivity() {
+class SplashActivity : BaseActivity() {
 
     private val viewModel: SplashViewModel by viewModels()
 

@@ -11,7 +11,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.calories.R
@@ -27,7 +27,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class NotificationSettingsActivity : AppCompatActivity() {
+class NotificationSettingsActivity : BaseActivity() {
 
     private lateinit var binding: ActivityNotificationSettingsBinding
     private val viewModel: NotificationSettingsViewModel by viewModels()

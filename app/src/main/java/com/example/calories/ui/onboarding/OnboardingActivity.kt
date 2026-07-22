@@ -4,7 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import androidx.core.view.isInvisible
 import androidx.viewpager2.widget.ViewPager2
 import com.example.calories.R
@@ -15,7 +15,7 @@ import com.example.calories.ui.common.collectLatestStarted
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class OnboardingActivity : AppCompatActivity() {
+class OnboardingActivity : BaseActivity() {
 
     private lateinit var binding: ActivityOnboardingBinding
     private val viewModel: OnboardingViewModel by viewModels()

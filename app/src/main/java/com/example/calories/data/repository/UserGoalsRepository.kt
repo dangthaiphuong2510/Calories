@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.Flow
 interface UserGoalsRepository {
     fun observeGoal(userId: String): Flow<UserGoal?>
     suspend fun saveGoal(goal: UserGoal): UserGoal
+    suspend fun cacheAvatarLocally(userId: String, avatarUrl: String?)
+    suspend fun updateAvatarUrl(userId: String, avatarUrl: String?): UserGoal
     suspend fun fetchAndSync()
     suspend fun refresh(userId: String)
 }

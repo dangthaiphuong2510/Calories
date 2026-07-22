@@ -10,6 +10,8 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,6 +41,48 @@ class UserGoalsRepositoryImpl @Inject constructor(
             Log.e(TAG, "Failed to sync user goal to Supabase", e)
             return goal
         }
+    }
+
+    override suspend fun cacheAvatarLocally(userId: String, avatarUrl: String?) {
+        val existing = userGoalDao.getForUser(userId) ?: return
+        val updated = existing.toDomain().copy(avatarUrl = avatarUrl)
+        userGoalDao.upsert(updated.toEntity(isDirty = true, syncedAt = null))
+    }
+
+    override suspend fun updateAvatarUrl(userId: String, avatarUrl: String?): UserGoal {
+        val existing = userGoalDao.getForUser(userId)
+            ?: throw IllegalStateException("No local user goal found for userId=$userId")
+
+        val goalId = existing.id
+        Log.d(TAG, "Updating avatar_url in Supabase goalId=$goalId userId=$userId url=$avatarUrl")
+
+        val remote = try {
+            supabase.from(TABLE_NAME)
+                .update(AvatarUrlPatch(avatarUrl)) {
+                    select()
+                    filter {
+                        eq("id", goalId)
+                        eq("user_id", userId)
+                    }
+                }
+                .decodeSingle<UserGoal>()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update avatar_url for goalId=$goalId userId=$userId", e)
+            throw e
+        }
+
+        if (remote.avatarUrl != avatarUrl) {
+            Log.w(
+                TAG,
+                "avatar_url mismatch after update: expected=$avatarUrl actual=${remote.avatarUrl}",
+            )
+        } else {
+            Log.d(TAG, "avatar_url committed to Supabase for goalId=$goalId")
+        }
+
+        val updated = existing.toDomain().copy(avatarUrl = remote.avatarUrl)
+        userGoalDao.upsert(updated.toEntity(isDirty = false))
+        return remote
     }
 
     override suspend fun fetchAndSync() {
@@ -98,6 +142,11 @@ class UserGoalsRepositoryImpl @Inject constructor(
     }
 
     private fun currentUserId(): String? = supabase.auth.currentUserOrNull()?.id
+
+    @Serializable
+    private data class AvatarUrlPatch(
+        @SerialName("avatar_url") val avatarUrl: String?,
+    )
 
     private companion object {
         const val TAG = "UserGoalsRepository"

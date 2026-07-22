@@ -11,7 +11,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
+import com.example.calories.ui.common.EdgeToEdgeHost
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -39,7 +40,7 @@ import javax.inject.Inject
  * StateFlows — unit/language changes on Profile re-emit Home/Analytics uiState immediately.
  */
 @AndroidEntryPoint
-class MainActivity : AppCompatActivity() {
+class MainActivity : BaseActivity(), EdgeToEdgeHost {
 
     private lateinit var binding: ActivityMainBinding
     private val viewModel: MainViewModel by viewModels()
@@ -49,6 +50,10 @@ class MainActivity : AppCompatActivity() {
     private var activeTabTag: String = TAG_HOME
 
     private var suppressBottomNavSelection = false
+
+    /** Cached on first inset pass so post-ad inset recalculations cannot inflate padding. */
+    private var cachedStatusBarTopInset: Int? = null
+    private var cachedBottomNavPadding: Int? = null
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
@@ -72,24 +77,28 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initializeMainUi(savedInstanceState: Bundle?) {
+        val surfaceColor = ContextCompat.getColor(this, R.color.surface)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.light(
-                Color.TRANSPARENT, Color.TRANSPARENT
+                Color.TRANSPARENT, Color.TRANSPARENT,
             ),
-            navigationBarStyle = SystemBarStyle.light(
-                Color.TRANSPARENT, Color.TRANSPARENT
-            )
+            navigationBarStyle = SystemBarStyle.light(surfaceColor, surfaceColor),
         )
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-
-        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { view, insets ->
+        ViewCompat.setOnApplyWindowInsetsListener(binding.main) { _, insets ->
             val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
-//            val navBars = insets.getInsets(WindowInsetsCompat.Type.navigationBars())
+            val topInset = cacheStatusBarTopInset(statusBars.top)
+            binding.navHostFragment.setPadding(0, topInset, 0, 0)
+            insets
+        }
 
-            view.setPadding(statusBars.left, statusBars.top, statusBars.right, 0)
+        ViewCompat.setOnApplyWindowInsetsListener(binding.bottomNav) { view, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val bottomPadding = cacheBottomNavPadding(systemBars.bottom)
+            view.setPadding(0, 0, 0, bottomPadding)
             insets
         }
 
@@ -289,6 +298,40 @@ class MainActivity : AppCompatActivity() {
             return
         }
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    override fun restoreEdgeToEdgeAfterFullscreenAd() {
+        if (!::binding.isInitialized) return
+        val surfaceColor = ContextCompat.getColor(this, R.color.surface)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(surfaceColor, surfaceColor),
+        )
+        applyCachedWindowInsets()
+    }
+
+    private fun cacheStatusBarTopInset(currentTop: Int): Int {
+        cachedStatusBarTopInset?.let { return it }
+        if (currentTop > 0) {
+            cachedStatusBarTopInset = currentTop
+        }
+        return cachedStatusBarTopInset ?: currentTop
+    }
+
+    private fun cacheBottomNavPadding(currentBottom: Int): Int {
+        cachedBottomNavPadding?.let { return it }
+        val padding = (currentBottom * 0.6f).toInt()
+        cachedBottomNavPadding = padding
+        return padding
+    }
+
+    private fun applyCachedWindowInsets() {
+        cachedStatusBarTopInset?.let { top ->
+            binding.navHostFragment.setPadding(0, top, 0, 0)
+        }
+        cachedBottomNavPadding?.let { bottom ->
+            binding.bottomNav.setPadding(0, 0, 0, bottom)
+        }
     }
 
     private companion object {

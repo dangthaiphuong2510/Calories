@@ -2,9 +2,10 @@ package com.example.calories.ui.auth
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import com.example.calories.R
 import com.example.calories.databinding.ActivityVerifyOtpResetPasswordBinding
 import com.example.calories.ui.common.UiEvent
@@ -12,7 +13,7 @@ import com.example.calories.ui.common.collectLatestStarted
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class VerifyOtpResetPasswordActivity : AppCompatActivity() {
+class VerifyOtpResetPasswordActivity : BaseActivity() {
 
     private lateinit var binding: ActivityVerifyOtpResetPasswordBinding
     private val viewModel: VerifyOtpResetPasswordViewModel by viewModels()
@@ -21,9 +22,16 @@ class VerifyOtpResetPasswordActivity : AppCompatActivity() {
         intent.getStringExtra(EXTRA_EMAIL).orEmpty()
     }
 
+    private val accessToken: String? by lazy {
+        intent.getStringExtra(EXTRA_ACCESS_TOKEN)
+    }
+
+    private val isDeepLinkFlow: Boolean
+        get() = !accessToken.isNullOrBlank()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (userEmail.isBlank()) {
+        if (!isDeepLinkFlow && userEmail.isBlank()) {
             finish()
             return
         }
@@ -31,7 +39,12 @@ class VerifyOtpResetPasswordActivity : AppCompatActivity() {
         binding = ActivityVerifyOtpResetPasswordBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        binding.tvVerifySubtitle.text = getString(R.string.verify_otp_subtitle, userEmail)
+        if (isDeepLinkFlow) {
+            binding.tilOtp.visibility = View.GONE
+            binding.tvVerifySubtitle.text = getString(R.string.reset_password_deep_link_subtitle)
+        } else {
+            binding.tvVerifySubtitle.text = getString(R.string.verify_otp_subtitle, userEmail)
+        }
 
         setupListeners()
         observeViewModel()
@@ -40,11 +53,17 @@ class VerifyOtpResetPasswordActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.tvBackToLogin.setOnClickListener { finish() }
         binding.btnUpdatePassword.setOnClickListener {
-            val otpCode = binding.etOtp.text?.toString()?.trim().orEmpty()
             val newPassword = binding.etNewPassword.text?.toString().orEmpty()
             val confirmPassword = binding.etConfirmPassword.text?.toString().orEmpty()
-            if (!validate(otpCode, newPassword, confirmPassword)) return@setOnClickListener
-            viewModel.verifyOtpAndUpdatePassword(userEmail, otpCode, newPassword)
+            if (!validate(newPassword, confirmPassword)) return@setOnClickListener
+
+            if (isDeepLinkFlow) {
+                viewModel.updatePasswordWithToken(accessToken!!, newPassword)
+            } else {
+                val otpCode = binding.etOtp.text?.toString()?.trim().orEmpty()
+                if (!validateOtp(otpCode)) return@setOnClickListener
+                viewModel.verifyOtpAndUpdatePassword(userEmail, otpCode, newPassword)
+            }
         }
     }
 
@@ -77,19 +96,25 @@ class VerifyOtpResetPasswordActivity : AppCompatActivity() {
         }
     }
 
-    private fun validate(otpCode: String, newPassword: String, confirmPassword: String): Boolean {
-        var isValid = true
+    private fun validateOtp(otpCode: String): Boolean {
         binding.tilOtp.error = null
+        return when {
+            otpCode.isBlank() -> {
+                binding.tilOtp.error = getString(R.string.error_otp_required)
+                false
+            }
+            otpCode.length != 6 || !otpCode.all { it.isDigit() } -> {
+                binding.tilOtp.error = getString(R.string.error_otp_invalid)
+                false
+            }
+            else -> true
+        }
+    }
+
+    private fun validate(newPassword: String, confirmPassword: String): Boolean {
+        var isValid = true
         binding.tilNewPassword.error = null
         binding.tilConfirmPassword.error = null
-
-        if (otpCode.isBlank()) {
-            binding.tilOtp.error = getString(R.string.error_otp_required)
-            isValid = false
-        } else if (otpCode.length != 6 || !otpCode.all { it.isDigit() }) {
-            binding.tilOtp.error = getString(R.string.error_otp_invalid)
-            isValid = false
-        }
 
         if (newPassword.isBlank()) {
             binding.tilNewPassword.error = getString(R.string.error_password_required)
@@ -109,5 +134,6 @@ class VerifyOtpResetPasswordActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_EMAIL = "extra_email"
+        const val EXTRA_ACCESS_TOKEN = "extra_access_token"
     }
 }

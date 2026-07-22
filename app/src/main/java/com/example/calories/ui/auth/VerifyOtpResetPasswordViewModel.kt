@@ -3,6 +3,9 @@ package com.example.calories.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.calories.R
+import com.example.calories.data.auth.AuthError
+import com.example.calories.data.auth.AuthRepository
+import com.example.calories.data.auth.AuthResult
 import com.example.calories.ui.common.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
@@ -29,6 +32,7 @@ sealed interface VerifyOtpResetPasswordNavEvent {
 
 @HiltViewModel
 class VerifyOtpResetPasswordViewModel @Inject constructor(
+    private val authRepository: AuthRepository,
     private val supabase: SupabaseClient,
 ) : ViewModel() {
 
@@ -55,19 +59,41 @@ class VerifyOtpResetPasswordViewModel @Inject constructor(
                     password = newPassword
                 }
                 runCatching { supabase.auth.signOut() }
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(UiEvent.MessageRes(R.string.password_updated_successfully))
-                _navEvents.send(VerifyOtpResetPasswordNavEvent.ToLogin)
+                onPasswordUpdateSuccess()
             } catch (e: AuthRestException) {
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(UiEvent.MessageRes(R.string.invalid_or_expired_otp))
+                onPasswordUpdateFailure(UiEvent.MessageRes(R.string.invalid_or_expired_otp))
             } catch (e: RestException) {
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(UiEvent.MessageRes(R.string.invalid_or_expired_otp))
+                onPasswordUpdateFailure(UiEvent.MessageRes(R.string.invalid_or_expired_otp))
             } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(UiEvent.Message(e.message ?: "Could not update password"))
+                onPasswordUpdateFailure(UiEvent.Message(e.message ?: "Could not update password"))
             }
         }
+    }
+
+    fun updatePasswordWithToken(accessToken: String, newPassword: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            when (val result = authRepository.updatePasswordWithToken(accessToken, newPassword)) {
+                is AuthResult.Success -> onPasswordUpdateSuccess()
+                is AuthResult.Failure -> {
+                    val messageRes = when (result.error) {
+                        AuthError.WeakPassword -> R.string.auth_weak_password
+                        else -> R.string.auth_invalid_recovery_link
+                    }
+                    onPasswordUpdateFailure(UiEvent.MessageRes(messageRes))
+                }
+            }
+        }
+    }
+
+    private suspend fun onPasswordUpdateSuccess() {
+        _uiState.update { it.copy(isLoading = false) }
+        _events.send(UiEvent.MessageRes(R.string.password_updated_successfully))
+        _navEvents.send(VerifyOtpResetPasswordNavEvent.ToLogin)
+    }
+
+    private suspend fun onPasswordUpdateFailure(event: UiEvent) {
+        _uiState.update { it.copy(isLoading = false) }
+        _events.send(event)
     }
 }
