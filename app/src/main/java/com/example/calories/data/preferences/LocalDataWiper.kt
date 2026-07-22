@@ -16,6 +16,7 @@ class LocalDataWiper @Inject constructor(
     private val database: CaloriesDatabase,
     private val appPreferences: AppPreferences,
     private val authDataStore: AuthDataStore,
+    private val insightPreferences: InsightPreferences,
     private val reminderScheduler: ReminderScheduler,
 ) {
     suspend fun wipeAll() = withContext(Dispatchers.IO) {
@@ -26,10 +27,7 @@ class LocalDataWiper @Inject constructor(
             .edit()
             .clear()
             .apply()
-        context.getSharedPreferences(InsightPreferences.PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .clear()
-            .apply()
+        insightPreferences.clear()
         context.getSharedPreferences(EXERCISE_PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .clear()

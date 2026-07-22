@@ -24,10 +24,7 @@ import com.example.calories.model.FoodEntry
 import com.example.calories.model.UserGoal
 import com.example.calories.model.WeightEntry
 import com.example.calories.model.enums.MealType
-import com.example.calories.insights.InsightEngineInput
-import com.example.calories.insights.InsightFoodDay
-import com.example.calories.insights.InsightWeightPoint
-import com.example.calories.insights.ProgressInsight
+import com.example.calories.insights.ProgressInsightInputBuilder
 import com.example.calories.insights.ProgressInsightEngine
 import com.example.calories.notifications.ReminderIds
 import com.example.calories.notifications.ReminderScheduler
@@ -517,7 +514,7 @@ class HomeViewModel @Inject constructor(
         val activeCallout = if (goal == null || dailyGoal <= 0) {
             null
         } else {
-            val insights = buildInsights(foods, weights, dailyGoal)
+            val insights = ProgressInsightInputBuilder.build(foods, weights, dailyGoal)
             ProgressInsightEngine.selectHomeCallout(insights, effectiveDismissedIds)
         }
 
@@ -586,32 +583,6 @@ class HomeViewModel @Inject constructor(
             language = language,
             mealDetailsExpanded = mealDetailsExpanded,
             activeCallout = activeCallout,
-        )
-    }
-
-    private fun buildInsights(
-        foods: List<FoodEntry>,
-        weights: List<WeightEntry>,
-        dailyCalories: Int,
-        today: LocalDate = DateTimeUtils.today(),
-    ): List<ProgressInsight> {
-        val macros = CalorieCalculator.macroTargetsFor(dailyCalories)
-        val foodDays = foods.mapNotNull { entry ->
-            val date = DateTimeUtils.toLocalDate(entry.createdAt) ?: return@mapNotNull null
-            InsightFoodDay(date, entry.calories, entry.protein)
-        }
-        val weightPoints = weights.mapNotNull { entry ->
-            val date = DateTimeUtils.toLocalDate(entry.recordedAt) ?: return@mapNotNull null
-            InsightWeightPoint(date, entry.weightKg)
-        }
-        return ProgressInsightEngine.evaluate(
-            InsightEngineInput(
-                today = today,
-                dailyCalorieTarget = dailyCalories,
-                proteinTargetGrams = macros.proteinGrams,
-                foodDays = foodDays,
-                weights = weightPoints,
-            ),
         )
     }
 
