@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.calories.R
 import com.example.calories.data.preferences.AppLanguage
 import com.example.calories.data.preferences.AppPreferences
+import com.example.calories.data.preferences.InsightPreferences
 import com.example.calories.data.preferences.NotificationPreferences
 import com.example.calories.data.preferences.NotificationPreferences.Companion.METRIC_CALORIES
 import com.example.calories.data.preferences.NotificationPreferences.Companion.METRIC_CARBS
@@ -23,6 +24,11 @@ import com.example.calories.model.FoodEntry
 import com.example.calories.model.UserGoal
 import com.example.calories.model.WeightEntry
 import com.example.calories.model.enums.MealType
+import com.example.calories.insights.InsightEngineInput
+import com.example.calories.insights.InsightFoodDay
+import com.example.calories.insights.InsightWeightPoint
+import com.example.calories.insights.ProgressInsight
+import com.example.calories.insights.ProgressInsightEngine
 import com.example.calories.notifications.ReminderIds
 import com.example.calories.notifications.ReminderScheduler
 import com.example.calories.ui.common.UiEvent
@@ -64,6 +70,7 @@ class HomeViewModel @Inject constructor(
     private val exerciseRepository: ExerciseRepository,
     private val waterRepository: WaterRepository,
     private val notificationPreferences: NotificationPreferences,
+    private val insightPreferences: InsightPreferences,
     private val appPreferences: AppPreferences,
     private val reminderScheduler: ReminderScheduler,
     @ApplicationContext private val appContext: Context,
@@ -145,7 +152,8 @@ class HomeViewModel @Inject constructor(
         combine(appPreferences.unitSystem, appPreferences.language) { unit, language ->
             unit to language
         },
-    ) { dateRemoteWater, extras, prefs ->
+        insightPreferences.dismissedIds,
+    ) { dateRemoteWater, extras, prefs, dismissedIds ->
         val (date, remote, water) = dateRemoteWater
         val (foods, goal, weights) = remote
         val (exercises, detailsExpanded, feedback, draftWeight, warningsEnabled) = extras
@@ -163,6 +171,7 @@ class HomeViewModel @Inject constructor(
             intakeWarningsEnabled = warningsEnabled,
             unitSystem = unitSystem,
             language = language,
+            dismissedIds = dismissedIds,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -181,6 +190,7 @@ class HomeViewModel @Inject constructor(
             intakeWarningsEnabled = notificationPreferences.intakeWarningsEnabled.value,
             unitSystem = appPreferences.unitSystem.value,
             language = appPreferences.language.value,
+            dismissedIds = insightPreferences.dismissedIds.value,
         ),
     )
 
@@ -332,6 +342,15 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             _navEvents.send(HomeNavEvent.OpenNotificationSettings)
         }
+    }
+
+    fun dismissCallout() {
+        val id = uiState.value.activeCallout?.id ?: return
+        insightPreferences.dismiss(id)
+    }
+
+    fun onCalloutClicked() {
+        viewModelScope.launch { _navEvents.send(HomeNavEvent.OpenProgressInsights) }
     }
 
     fun refresh() {
@@ -486,11 +505,18 @@ class HomeViewModel @Inject constructor(
         intakeWarningsEnabled: Boolean,
         unitSystem: UnitSystem,
         language: AppLanguage,
+        dismissedIds: Set<String>,
     ): HomeUiState {
         val dayFoods = foods.filter { DateTimeUtils.isSameDay(it.createdAt, date) }
         val dailyGoal = goal?.dailyCalories ?: 0
         val macroTargets = CalorieCalculator.macroTargetsFor(dailyGoal)
         val dayWeight = draftWeightKg ?: resolveWeightForDate(weights, goal, date)
+        val activeCallout = if (goal == null || dailyGoal <= 0) {
+            null
+        } else {
+            val insights = buildInsights(foods, weights, dailyGoal)
+            ProgressInsightEngine.selectHomeCallout(insights, dismissedIds)
+        }
 
         fun section(type: MealType, titleRes: Int): MealSection {
             val items = dayFoods
@@ -556,6 +582,33 @@ class HomeViewModel @Inject constructor(
             unitSystem = unitSystem,
             language = language,
             mealDetailsExpanded = mealDetailsExpanded,
+            activeCallout = activeCallout,
+        )
+    }
+
+    private fun buildInsights(
+        foods: List<FoodEntry>,
+        weights: List<WeightEntry>,
+        dailyCalories: Int,
+        today: LocalDate = DateTimeUtils.today(),
+    ): List<ProgressInsight> {
+        val macros = CalorieCalculator.macroTargetsFor(dailyCalories)
+        val foodDays = foods.mapNotNull { entry ->
+            val date = DateTimeUtils.toLocalDate(entry.createdAt) ?: return@mapNotNull null
+            InsightFoodDay(date, entry.calories, entry.protein)
+        }
+        val weightPoints = weights.mapNotNull { entry ->
+            val date = DateTimeUtils.toLocalDate(entry.recordedAt) ?: return@mapNotNull null
+            InsightWeightPoint(date, entry.weightKg)
+        }
+        return ProgressInsightEngine.evaluate(
+            InsightEngineInput(
+                today = today,
+                dailyCalorieTarget = dailyCalories,
+                proteinTargetGrams = macros.proteinGrams,
+                foodDays = foodDays,
+                weights = weightPoints,
+            ),
         )
     }
 

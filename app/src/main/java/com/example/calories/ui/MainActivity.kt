@@ -165,6 +165,14 @@ class MainActivity : BaseActivity(), EdgeToEdgeHost {
         }
     }
 
+    fun openProgressTab() {
+        supportFragmentManager.popBackStack(
+            CAMERA_BACK_STACK,
+            FragmentManager.POP_BACK_STACK_INCLUSIVE,
+        )
+        showTab(TAG_PROGRESS, updateBottomNav = true)
+    }
+
     private fun showTab(tag: String, updateBottomNav: Boolean = true) {
         if (tag == activeTabTag && isTabVisible(tag)) {
             if (updateBottomNav) selectBottomNavItem(tag)

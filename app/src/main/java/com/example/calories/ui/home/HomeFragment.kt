@@ -18,7 +18,9 @@ import com.example.calories.databinding.ItemHomeExerciseBinding
 import com.example.calories.databinding.ItemHomeMealCircleBinding
 import com.example.calories.databinding.ItemHomeMealDetailSectionBinding
 import com.example.calories.databinding.ItemHomeMealFoodBinding
+import com.example.calories.insights.ProgressInsightUiMapper
 import com.example.calories.model.enums.MealType
+import com.example.calories.ui.MainActivity
 import com.example.calories.ui.camera.FoodAnalysisResultFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
@@ -126,6 +128,9 @@ class HomeFragment : Fragment() {
 
         binding.sectionWeight.btnWeightMinus.setOnClickListener { viewModel.adjustWeight(-0.1) }
         binding.sectionWeight.btnWeightPlus.setOnClickListener { viewModel.adjustWeight(+0.1) }
+
+        binding.cardInsightCallout.setOnClickListener { viewModel.onCalloutClicked() }
+        binding.btnDismissCallout.setOnClickListener { viewModel.dismissCallout() }
     }
 
     override fun onPause() {
@@ -136,6 +141,7 @@ class HomeFragment : Fragment() {
     private fun observeViewModel() {
         viewLifecycleOwner.collectLatestStarted(viewModel.uiState) { state ->
             bindDateHeader(state)
+            bindCalloutCard(state)
             bindCalorieCard(state)
             bindMacrosCard(state)
             bindMealsSection(state)
@@ -157,7 +163,25 @@ class HomeFragment : Fragment() {
                 is HomeNavEvent.OpenFoodDetail -> openFoodDetail(event)
                 HomeNavEvent.OpenExerciseLogger -> openExerciseLogger()
                 HomeNavEvent.OpenNotificationSettings -> openNotificationSettings()
+                HomeNavEvent.OpenProgressInsights ->
+                    (activity as? MainActivity)?.openProgressTab()
             }
+        }
+    }
+
+    private fun bindCalloutCard(state: HomeUiState) {
+        val callout = state.activeCallout
+        if (callout == null) {
+            binding.cardInsightCallout.visibility = View.GONE
+            return
+        }
+        binding.cardInsightCallout.visibility = View.VISIBLE
+        binding.tvCalloutTitle.setText(ProgressInsightUiMapper.titleRes(callout.id))
+        val bodyRes = ProgressInsightUiMapper.bodyRes(callout.id)
+        binding.tvCalloutBody.text = if (callout.formatArgs.isEmpty()) {
+            getString(bodyRes)
+        } else {
+            getString(bodyRes, *callout.formatArgs.toTypedArray())
         }
     }
 
