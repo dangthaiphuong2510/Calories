@@ -15,6 +15,8 @@ import com.example.calories.R
 import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.databinding.DialogAddWeightBinding
 import com.example.calories.databinding.FragmentWeightTrackingBinding
+import com.example.calories.insights.InsightAction
+import com.example.calories.insights.ProgressInsight
 import com.example.calories.ui.common.BaseFragment
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
@@ -30,6 +32,7 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
 
     private val viewModel: WeightTrackingViewModel by viewModels()
     private val adapter = WeightEntryAdapter()
+    private val insightAdapter = ProgressInsightAdapter(::onInsightClick)
     private var currentUnitSystem: UnitSystem = UnitSystem.METRIC
     private var lastHistoryExpanded: Boolean? = null
 
@@ -43,6 +46,8 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
         super.onViewCreated(view, savedInstanceState)
         binding.rvWeightEntries.layoutManager = LinearLayoutManager(requireContext())
         binding.rvWeightEntries.adapter = adapter
+        binding.rvInsights.layoutManager = LinearLayoutManager(requireContext())
+        binding.rvInsights.adapter = insightAdapter
         binding.fabLogWeight.setOnClickListener { showLogWeightDialog() }
         binding.btnToggleHistory.setOnClickListener { viewModel.toggleHistoryExpanded() }
         setupNutritionControls()
@@ -123,6 +128,10 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
                 emptyMessage = getString(R.string.macro_legend_empty),
             )
             bindMacroLegend(distribution, proteinColor, carbColor, fatColor)
+
+            binding.sectionInsights.isVisible =
+                state.hasGoals && state.insights.isNotEmpty()
+            insightAdapter.submitList(state.insights)
         }
         viewLifecycleOwner.collectLatestStarted(viewModel.events) { event ->
             when (event) {
@@ -242,6 +251,12 @@ class WeightTrackingFragment : BaseFragment<FragmentWeightTrackingBinding>() {
             viewModel.selectNutritionDate(selected)
         }
         picker.show(parentFragmentManager, "nutrition_date_picker")
+    }
+
+    private fun onInsightClick(insight: ProgressInsight) {
+        if (insight.action is InsightAction.OpenWeightLog) {
+            showLogWeightDialog()
+        }
     }
 
     private fun showLogWeightDialog() {

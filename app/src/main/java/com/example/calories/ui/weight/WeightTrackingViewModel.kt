@@ -9,10 +9,16 @@ import com.example.calories.data.repository.ExerciseRepository
 import com.example.calories.data.repository.FoodRepository
 import com.example.calories.data.repository.UserGoalsRepository
 import com.example.calories.data.repository.WeightRepository
+import com.example.calories.insights.InsightEngineInput
+import com.example.calories.insights.InsightFoodDay
+import com.example.calories.insights.InsightWeightPoint
+import com.example.calories.insights.ProgressInsight
+import com.example.calories.insights.ProgressInsightEngine
 import com.example.calories.model.ExerciseEntry
 import com.example.calories.model.FoodEntry
 import com.example.calories.model.WeightEntry
 import com.example.calories.ui.common.UiEvent
+import com.example.calories.util.CalorieCalculator
 import com.example.calories.util.DateTimeUtils
 import com.example.calories.util.UnitConverter
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -75,6 +81,8 @@ data class WeightUiState(
     val macroDistribution: MacroDistributionUi = MacroDistributionUi(),
     val unitSystem: UnitSystem = UnitSystem.METRIC,
     val language: AppLanguage = AppLanguage.ENGLISH,
+    val insights: List<ProgressInsight> = emptyList(),
+    val hasGoals: Boolean = false,
 ) {
     fun displayedHistoryEntries(): List<WeightEntry> {
         if (isHistoryExpanded || entries.size <= COLLAPSED_HISTORY_COUNT) return entries
@@ -125,7 +133,14 @@ class WeightTrackingViewModel @Inject constructor(
                     foodRepository.observeFoodEntries(id),
                     exerciseRepository.observeExerciseEntries(id),
                 ) { entries, goal, foods, exercises ->
-                    NutritionSourceData(entries, goal?.currentWeight, goal?.targetWeight, foods, exercises)
+                    NutritionSourceData(
+                        weightEntries = entries,
+                        goalCurrentWeight = goal?.currentWeight,
+                        goalTargetWeight = goal?.targetWeight,
+                        dailyCalories = goal?.dailyCalories,
+                        foods = foods,
+                        exercises = exercises,
+                    )
                 }.combine(_nutritionPeriod) { source, period ->
                     source to period
                 }.combine(_selectedDate) { (source, period), date ->
@@ -192,6 +207,7 @@ class WeightTrackingViewModel @Inject constructor(
         val weightEntries: List<WeightEntry>,
         val goalCurrentWeight: Double?,
         val goalTargetWeight: Double?,
+        val dailyCalories: Int?,
         val foods: List<FoodEntry>,
         val exercises: List<ExerciseEntry>,
     )
@@ -205,6 +221,13 @@ class WeightTrackingViewModel @Inject constructor(
     ): WeightUiState {
         val chronological = source.weightEntries.sortedBy { it.recordedAt }
         val days = daysForPeriod(period, selectedDate)
+        val dailyCalories = source.dailyCalories
+        val hasGoals = dailyCalories != null && dailyCalories > 0
+        val insights = if (hasGoals) {
+            buildInsights(source.foods, chronological, dailyCalories)
+        } else {
+            emptyList()
+        }
         return WeightUiState(
             currentWeightKg = chronological.lastOrNull()?.weightKg
                 ?: source.goalCurrentWeight,
@@ -217,6 +240,8 @@ class WeightTrackingViewModel @Inject constructor(
             macroDistribution = buildMacroDistribution(source.foods, period, days),
             unitSystem = unitSystem,
             language = language,
+            insights = insights,
+            hasGoals = hasGoals,
         )
     }
 
@@ -271,6 +296,33 @@ class WeightTrackingViewModel @Inject constructor(
                     burnedKcal = burned,
                 )
             }
+        }
+
+        private fun buildInsights(
+            foods: List<FoodEntry>,
+            weights: List<WeightEntry>,
+            dailyCalories: Int?,
+            today: LocalDate = DateTimeUtils.today(),
+        ): List<ProgressInsight> {
+            if (dailyCalories == null || dailyCalories <= 0) return emptyList()
+            val macros = CalorieCalculator.macroTargetsFor(dailyCalories)
+            val foodDays = foods.mapNotNull { entry ->
+                val date = DateTimeUtils.toLocalDate(entry.createdAt) ?: return@mapNotNull null
+                InsightFoodDay(date, entry.calories, entry.protein)
+            }
+            val weightPoints = weights.mapNotNull { entry ->
+                val date = DateTimeUtils.toLocalDate(entry.recordedAt) ?: return@mapNotNull null
+                InsightWeightPoint(date, entry.weightKg)
+            }
+            return ProgressInsightEngine.evaluate(
+                InsightEngineInput(
+                    today = today,
+                    dailyCalorieTarget = dailyCalories,
+                    proteinTargetGrams = macros.proteinGrams,
+                    foodDays = foodDays,
+                    weights = weightPoints,
+                ),
+            )
         }
 
         private fun buildMacroDistribution(
