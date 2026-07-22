@@ -42,6 +42,13 @@ class InsightPreferences @Inject constructor(
         _dismissedIds.value = emptySet()
     }
 
+    fun ensureCurrentWeek() {
+        val current = readDismissedForCurrentWeek()
+        if (_dismissedIds.value != current) {
+            _dismissedIds.value = current
+        }
+    }
+
     private fun readDismissedForCurrentWeek(): Set<String> {
         val week = InsightWeekKeys.isoWeekKey(DateTimeUtils.today())
         val storedWeek = prefs.getString(KEY_WEEK, null)

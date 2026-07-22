@@ -507,6 +507,9 @@ class HomeViewModel @Inject constructor(
         language: AppLanguage,
         dismissedIds: Set<String>,
     ): HomeUiState {
+        insightPreferences.ensureCurrentWeek()
+        val effectiveDismissedIds = insightPreferences.dismissedIds.value
+
         val dayFoods = foods.filter { DateTimeUtils.isSameDay(it.createdAt, date) }
         val dailyGoal = goal?.dailyCalories ?: 0
         val macroTargets = CalorieCalculator.macroTargetsFor(dailyGoal)
@@ -515,7 +518,7 @@ class HomeViewModel @Inject constructor(
             null
         } else {
             val insights = buildInsights(foods, weights, dailyGoal)
-            ProgressInsightEngine.selectHomeCallout(insights, dismissedIds)
+            ProgressInsightEngine.selectHomeCallout(insights, effectiveDismissedIds)
         }
 
         fun section(type: MealType, titleRes: Int): MealSection {
