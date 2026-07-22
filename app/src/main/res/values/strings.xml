@@ -366,6 +366,21 @@
     <string name="nutrition_week_range_format">%1$s – %2$s</string>
     <string name="macro_center_day">Day</string>
     <string name="macro_center_week">7 days</string>
+    <string name="insights_section_title">Weekly insights</string>
+    <string name="insights_insufficient_title">Keep logging</string>
+    <string name="insights_insufficient_body">Log food for a few more days to unlock personal insights.</string>
+    <string name="insights_plateau_title">Scale not moving</string>
+    <string name="insights_plateau_body">Your logs show several days under target, but weight is nearly flat. Check portions or logging gaps.</string>
+    <string name="insights_weekend_title">Weekend calorie spike</string>
+    <string name="insights_weekend_body">Your logs show weekend intake meaningfully higher than weekdays.</string>
+    <string name="insights_protein_title">Protein running low</string>
+    <string name="insights_protein_body">Protein was under ~80% of target on most recent logged days.</string>
+    <string name="insights_logging_gap_title">Missing food logs</string>
+    <string name="insights_logging_gap_body">%1$s days in the last week have no food logged, so trends may be incomplete.</string>
+    <string name="insights_on_track_title">Solid adherence</string>
+    <string name="insights_on_track_body">You stayed near your calorie target on %1$s days this week.</string>
+    <string name="insights_dismiss">Dismiss</string>
+    <string name="insights_home_callout_cd">Progress insight</string>
 
     <!-- Profile -->
     <string name="profile">Profile</string>
