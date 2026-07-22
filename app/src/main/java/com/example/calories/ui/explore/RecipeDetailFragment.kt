@@ -14,6 +14,7 @@ import androidx.fragment.app.viewModels
 import androidx.recyclerview.widget.LinearLayoutManager
 import coil.load
 import com.example.calories.R
+import com.example.calories.ads.FullscreenAdWindowHelper
 import com.example.calories.databinding.BottomSheetSelectMealTypeBinding
 import com.example.calories.databinding.FragmentRecipeDetailBinding
 import com.example.calories.databinding.ItemMealTypeOptionBinding
@@ -174,19 +175,24 @@ class RecipeDetailFragment : BaseFragment<FragmentRecipeDetailBinding>() {
     private fun showRewardedAdToUnlock() {
         val ad = rewardedAd
         if (ad != null) {
-            ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-                override fun onAdDismissedFullScreenContent() {
-                    rewardedAd = null
-                    loadRewardedAd()
-                }
+            val activity = requireActivity()
+            ad.fullScreenContentCallback = FullscreenAdWindowHelper.wrapCallback(
+                activity,
+                object : FullScreenContentCallback() {
+                    override fun onAdDismissedFullScreenContent() {
+                        rewardedAd = null
+                        loadRewardedAd()
+                    }
 
-                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                    rewardedAd = null
-                    loadRewardedAd()
-                }
-            }
+                    override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                        rewardedAd = null
+                        loadRewardedAd()
+                    }
+                },
+            )
 
-            ad.show(requireActivity()) { _ ->
+            FullscreenAdWindowHelper.enterFullscreenAdMode(activity)
+            ad.show(activity) { _ ->
                 viewModel.unlockRecipe()
                 Toast.makeText(requireContext(), "Instructions unlocked!", Toast.LENGTH_SHORT)
                     .show()

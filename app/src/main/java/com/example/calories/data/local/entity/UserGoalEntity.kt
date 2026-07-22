@@ -16,6 +16,7 @@ data class UserGoalEntity(
     val goalType: String,
     val tdee: Int,
     val dailyCalories: Int,
+    val avatarUrl: String? = null,
     val isDirty: Boolean = false,
     val syncedAt: Long? = null,
 )

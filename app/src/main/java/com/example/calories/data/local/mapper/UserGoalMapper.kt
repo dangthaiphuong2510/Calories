@@ -19,6 +19,7 @@ fun UserGoalEntity.toDomain(): UserGoal = UserGoal(
     goalType = runCatching { GoalType.valueOf(goalType) }.getOrDefault(GoalType.MAINTAIN),
     tdee = tdee,
     dailyCalories = dailyCalories,
+    avatarUrl = avatarUrl,
 )
 
 fun UserGoal.toEntity(
@@ -36,6 +37,7 @@ fun UserGoal.toEntity(
     goalType = goalType.name,
     tdee = tdee,
     dailyCalories = dailyCalories,
+    avatarUrl = avatarUrl,
     isDirty = isDirty,
     syncedAt = syncedAt,
 )

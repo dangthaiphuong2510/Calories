@@ -30,7 +30,7 @@ import com.example.calories.data.local.entity.WeightEntryEntity
         ProfileEntity::class,
         FavoriteFoodEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class CaloriesDatabase : RoomDatabase() {

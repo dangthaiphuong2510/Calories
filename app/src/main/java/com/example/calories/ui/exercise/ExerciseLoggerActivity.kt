@@ -6,7 +6,7 @@ import android.text.TextWatcher
 import android.view.View
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.calories.databinding.ActivityExerciseLoggerBinding
 import com.example.calories.ui.common.UiEvent
@@ -16,7 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 
 @AndroidEntryPoint
-class ExerciseLoggerActivity : AppCompatActivity() {
+class ExerciseLoggerActivity : BaseActivity() {
 
     private lateinit var binding: ActivityExerciseLoggerBinding
     private val viewModel: ExerciseLoggerViewModel by viewModels()

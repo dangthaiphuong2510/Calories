@@ -1,19 +1,21 @@
 package com.example.calories.ui.auth
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
 import com.example.calories.R
 import com.example.calories.databinding.ActivityForgotPasswordBinding
+import com.example.calories.ui.common.BaseActivity
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.ui.common.collectLatestStarted
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
-class ForgotPasswordActivity : AppCompatActivity() {
+class ForgotPasswordActivity : BaseActivity() {
 
     private lateinit var binding: ActivityForgotPasswordBinding
     private val viewModel: ForgotPasswordViewModel by viewModels()
@@ -29,6 +31,37 @@ class ForgotPasswordActivity : AppCompatActivity() {
 
         setupListeners()
         observeViewModel()
+        handleDeepLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val uri: Uri = intent?.data ?: return
+
+        if (uri.scheme == "calories" && uri.host == "reset-password") {
+            val fragment = uri.fragment
+            if (!fragment.isNullOrBlank()) {
+                val accessToken = fragment.split("&")
+                    .firstOrNull { it.startsWith("access_token=") }
+                    ?.substringAfter("access_token=")
+
+                if (!accessToken.isNullOrEmpty()) {
+                    Log.d("ForgotPasswordActivity", "Access Token to Deep Link: $accessToken")
+
+                    startActivity(
+                        Intent(this, VerifyOtpResetPasswordActivity::class.java).apply {
+                            putExtra(VerifyOtpResetPasswordActivity.EXTRA_ACCESS_TOKEN, accessToken)
+                        }
+                    )
+                    finish()
+                }
+            }
+        }
     }
 
     private fun setupListeners() {

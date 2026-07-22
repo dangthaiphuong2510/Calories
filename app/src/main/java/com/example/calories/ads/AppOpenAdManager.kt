@@ -98,29 +98,33 @@ class AppOpenAdManager(private val myApplication: Application) :
             return
         }
 
-        appOpenAd?.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdDismissedFullScreenContent() {
-                appOpenAd = null
-                isShowingAd = false
-                Log.d("AppOpenAdManager", "Ad dismissed.")
-                onShowAdCompleteListener.onShowAdComplete()
-                loadAd(activity)
-            }
+        appOpenAd?.fullScreenContentCallback = FullscreenAdWindowHelper.wrapCallback(
+            activity,
+            object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    appOpenAd = null
+                    isShowingAd = false
+                    Log.d("AppOpenAdManager", "Ad dismissed.")
+                    onShowAdCompleteListener.onShowAdComplete()
+                    loadAd(activity)
+                }
 
-            override fun onAdFailedToShowFullScreenContent(adError: AdError) {
-                appOpenAd = null
-                isShowingAd = false
-                Log.d("AppOpenAdManager", "Ad failed to show: ${adError.message}")
-                onShowAdCompleteListener.onShowAdComplete()
-                loadAd(activity)
-            }
+                override fun onAdFailedToShowFullScreenContent(adError: AdError) {
+                    appOpenAd = null
+                    isShowingAd = false
+                    Log.d("AppOpenAdManager", "Ad failed to show: ${adError.message}")
+                    onShowAdCompleteListener.onShowAdComplete()
+                    loadAd(activity)
+                }
 
-            override fun onAdShowedFullScreenContent() {
-                isShowingAd = true
-                Log.d("AppOpenAdManager", "Ad showed full screen content.")
-            }
-        }
+                override fun onAdShowedFullScreenContent() {
+                    isShowingAd = true
+                    Log.d("AppOpenAdManager", "Ad showed full screen content.")
+                }
+            },
+        )
 
+        FullscreenAdWindowHelper.enterFullscreenAdMode(activity)
         appOpenAd?.show(activity)
     }
 

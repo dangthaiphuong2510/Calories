@@ -41,6 +41,11 @@ class AvatarStorage @Inject constructor(
         File(context.filesDir, "$DIR_NAME/$userId.jpg").delete()
     }
 
+    fun getLocalPath(userId: String): String? {
+        val file = File(context.filesDir, "$DIR_NAME/$userId.jpg")
+        return file.takeIf { it.exists() }?.absolutePath
+    }
+
     private fun decodeBitmap(uri: Uri): Bitmap? {
         return runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

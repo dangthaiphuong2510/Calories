@@ -1,5 +1,7 @@
 package com.example.calories.di
 
+import com.example.calories.data.auth.AuthRepository
+import com.example.calories.data.auth.AuthRepositoryImpl
 import com.example.calories.data.repository.ExerciseRepository
 import com.example.calories.data.repository.ExerciseRepositoryImpl
 import com.example.calories.data.repository.FoodRepository
@@ -25,6 +27,10 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 
     @Binds
     @Singleton

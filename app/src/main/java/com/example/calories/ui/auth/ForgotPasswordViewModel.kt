@@ -3,10 +3,11 @@ package com.example.calories.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.calories.R
+import com.example.calories.data.auth.AuthError
+import com.example.calories.data.auth.AuthRepository
+import com.example.calories.data.auth.AuthResult
 import com.example.calories.ui.common.UiEvent
 import dagger.hilt.android.lifecycle.HiltViewModel
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -26,7 +27,7 @@ sealed interface ForgotPasswordNavEvent {
 
 @HiltViewModel
 class ForgotPasswordViewModel @Inject constructor(
-    private val supabase: SupabaseClient,
+    private val authRepository: AuthRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ForgotPasswordUiState())
@@ -41,17 +42,16 @@ class ForgotPasswordViewModel @Inject constructor(
     fun sendRecoveryOtp(email: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
-            try {
-                supabase.auth.awaitInitialization()
-                supabase.auth.resetPasswordForEmail(email)
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(UiEvent.MessageRes(R.string.reset_email_sent))
-                _navEvents.send(ForgotPasswordNavEvent.ToVerifyOtp(email))
-            } catch (e: Exception) {
-                _uiState.update { it.copy(isLoading = false) }
-                _events.send(
-                    UiEvent.Message(e.message ?: "Could not send reset email"),
-                )
+            when (val result = authRepository.sendRecoveryEmail(email)) {
+                is AuthResult.Success -> {
+                    _uiState.update { it.copy(isLoading = false) }
+                    _events.send(UiEvent.MessageRes(R.string.reset_email_sent))
+                    _navEvents.send(ForgotPasswordNavEvent.ToVerifyOtp(email))
+                }
+                is AuthResult.Failure -> {
+                    _uiState.update { it.copy(isLoading = false) }
+                    _events.send(UiEvent.MessageRes(result.error.toMessageRes()))
+                }
             }
         }
     }

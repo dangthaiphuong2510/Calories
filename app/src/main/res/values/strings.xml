@@ -27,6 +27,18 @@
     <string name="error_login_failed">Login failed. Please try again.</string>
     <string name="error_register_failed">Registration failed. Please try again.</string>
     <string name="register_success_message">Registration successful</string>
+    <string name="auth_email_not_confirmed">Please confirm your email first. We\'ve sent a confirmation link to your inbox — verify it, then sign in.</string>
+    <string name="auth_confirmation_resent">Confirmation email sent. Check your inbox (and spam folder).</string>
+    <string name="auth_invalid_credentials">Incorrect email or password.</string>
+    <string name="auth_email_already_registered">This email is already registered. Try signing in instead.</string>
+    <string name="auth_weak_password">Password is too weak. Use at least 8 characters.</string>
+    <string name="auth_rate_limited">Too many attempts. Please wait a moment and try again.</string>
+    <string name="auth_network_error">Network error. Check your connection and try again.</string>
+    <string name="auth_google_linked_info">Signed in with Google and linked to your existing account.</string>
+    <string name="auth_generic_error">Something went wrong. Please try again.</string>
+    <string name="auth_email_not_confirmed_title">Confirm your email</string>
+    <string name="auth_resend_confirmation">Resend email</string>
+    <string name="auth_invalid_recovery_link">This reset link is invalid or has expired. Request a new one.</string>
     <string name="reset_email_sent">Password reset email sent</string>
     <string name="reset_email_failed">Could not send reset email</string>
     <string name="forgot_password_title">Forgot password</string>
@@ -34,6 +46,7 @@
     <string name="send_reset_code">SEND CODE</string>
     <string name="verify_otp_title">Reset password</string>
     <string name="verify_otp_subtitle">Enter the 6-digit code sent to %1$s</string>
+    <string name="reset_password_deep_link_subtitle">Enter your new password below.</string>
     <string name="otp_code">6-digit code</string>
     <string name="new_password">New password</string>
     <string name="update_password">UPDATE PASSWORD</string>

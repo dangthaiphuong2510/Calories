@@ -11,10 +11,15 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.view.View
 import android.widget.Toast
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
+import androidx.core.view.updatePadding
 import com.example.calories.R
 import com.example.calories.databinding.ActivityFoodDetailBinding
 import com.example.calories.model.enums.MealType
@@ -34,7 +39,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.time.LocalDate
 
 @AndroidEntryPoint
-class FoodDetailActivity : AppCompatActivity() {
+class FoodDetailActivity : BaseActivity() {
 
     private lateinit var binding: ActivityFoodDetailBinding
     private val viewModel: FoodDetailViewModel by viewModels()
@@ -47,8 +52,13 @@ class FoodDetailActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+        )
         binding = ActivityFoodDetailBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        setupWindowInsets()
 
         val foodId = intent.getStringExtra(EXTRA_FOOD_ID)
         val favoriteFoodId = intent.getStringExtra(EXTRA_FAVORITE_FOOD_ID)
@@ -92,6 +102,14 @@ class FoodDetailActivity : AppCompatActivity() {
         binding.btnLogFood.setOnClickListener { viewModel.logFood() }
         binding.btnSaveChanges.setOnClickListener { viewModel.saveChanges() }
         setupChart()
+    }
+
+    private fun setupWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars())
+            binding.nestedScrollView.updatePadding(top = statusBars.top)
+            insets
+        }
     }
 
     private fun loadCollapsibleBanner() {

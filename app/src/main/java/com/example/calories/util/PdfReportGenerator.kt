@@ -54,10 +54,6 @@ object PdfReportGenerator {
             textSize = 22f
             typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
         }
-        val subtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = colorTextSecondary
-            textSize = 12f
-        }
         val sectionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = colorTextPrimary
             textSize = 14f
@@ -78,31 +74,29 @@ object PdfReportGenerator {
         val dividerPaint = Paint().apply { color = colorDivider }
         val cardPaint = Paint().apply { color = colorSurface }
 
-        // Header band
         canvas.drawRect(0f, 0f, PAGE_WIDTH.toFloat(), 88f, cardPaint)
         canvas.drawText("Calories", MARGIN_H, 36f, titlePaint.apply { textSize = 18f })
         canvas.drawText(
-            "BÁO CÁO DINH DƯỠNG SỨC KHỎE",
+            "NUTRITION & HEALTH REPORT",
             MARGIN_H,
             68f,
             titlePaint.apply { textSize = 20f },
         )
         y = 112f
 
-        // User info
-        y = drawSectionTitle(canvas, "Thông tin người dùng", sectionPaint, y)
-        y = drawKeyValue(canvas, "Họ tên", data.userName, labelPaint, valuePaint, y)
-        y = drawKeyValue(canvas, "Khoảng thời gian", data.dateRangeText, labelPaint, valuePaint, y)
+        y = drawSectionTitle(canvas, "User Profile", sectionPaint, y)
+        y = drawKeyValue(canvas, "Full Name", data.userName, labelPaint, valuePaint, y)
+        y = drawKeyValue(canvas, "Date Range", data.dateRangeText, labelPaint, valuePaint, y)
         y = drawDivider(canvas, dividerPaint, y + 12f)
 
-        // Section 1: Calorie summary
-        y = drawSectionTitle(canvas, "1. Tổng quan calo", sectionPaint, y + 8f)
+
+        y = drawSectionTitle(canvas, "1. Calorie Overview", sectionPaint, y + 8f)
         y = drawMetricCard(
             canvas,
             cardPaint,
             listOf(
-                "Mục tiêu calo/ngày" to "${data.targetCaloriesPerDay} kcal",
-                "Trung bình calo nạp/ngày" to "${data.avgCaloriesIntake} kcal",
+                "Daily Calorie Target" to "${data.targetCaloriesPerDay} kcal",
+                "Avg Daily Intake" to "${data.avgCaloriesIntake} kcal",
             ),
             labelPaint,
             valuePaint,
@@ -110,24 +104,23 @@ object PdfReportGenerator {
         )
         val calorieDelta = data.avgCaloriesIntake - data.targetCaloriesPerDay
         val deltaText = when {
-            data.targetCaloriesPerDay <= 0 -> "Chưa thiết lập mục tiêu calo"
-            calorieDelta > 0 -> "Vượt mục tiêu trung bình $calorieDelta kcal/ngày"
-            calorieDelta < 0 -> "Thiếu mục tiêu trung bình ${-calorieDelta} kcal/ngày"
-            else -> "Đạt đúng mục tiêu calo trung bình"
+            data.targetCaloriesPerDay <= 0 -> "Calorie target not set"
+            calorieDelta > 0 -> "Exceeded target by $calorieDelta kcal/day on average"
+            calorieDelta < 0 -> "Below target by ${-calorieDelta} kcal/day on average"
+            else -> "On track with daily calorie target"
         }
         y = drawBodyLine(canvas, deltaText, bodyPaint, y + 8f)
         y = drawDivider(canvas, dividerPaint, y + 16f)
 
-        // Section 2: Macros & water
-        y = drawSectionTitle(canvas, "2. Macro trung bình & nước uống", sectionPaint, y + 8f)
+        y = drawSectionTitle(canvas, "2. Average Macros & Hydration", sectionPaint, y + 8f)
         y = drawMetricCard(
             canvas,
             cardPaint,
             listOf(
-                "Đạm (Protein)" to formatGrams(data.avgProteinGrams),
-                "Tinh bột (Carbs)" to formatGrams(data.avgCarbsGrams),
-                "Chất béo (Fat)" to formatGrams(data.avgFatGrams),
-                "Tổng nước uống" to "${data.totalWaterMl} ml",
+                "Protein" to formatGrams(data.avgProteinGrams),
+                "Carbohydrates" to formatGrams(data.avgCarbsGrams),
+                "Fat" to formatGrams(data.avgFatGrams),
+                "Total Water Intake" to "${data.totalWaterMl} ml",
             ),
             labelPaint,
             valuePaint,
@@ -138,9 +131,10 @@ object PdfReportGenerator {
         val footerY = PAGE_HEIGHT - 72f
         canvas.drawLine(MARGIN_H, footerY - 16f, PAGE_WIDTH - MARGIN_H, footerY - 16f, dividerPaint)
         val disclaimer = (
-            "Lưu ý: Báo cáo này chỉ mang tính tham khảo và không thay thế tư vấn y khoa. " +
-                "Vui lòng tham khảo chuyên gia dinh dưỡng hoặc bác sĩ trước khi thay đổi chế độ ăn uống."
-            )
+                "Disclaimer: This report is generated for informational and tracking purposes only and " +
+                        "does not constitute medical advice. Please consult a qualified nutritionist or physician " +
+                        "before making major dietary changes."
+                )
         drawWrappedText(canvas, disclaimer, bodyPaint, MARGIN_H, footerY, PAGE_WIDTH - MARGIN_H * 2)
     }
 
@@ -232,5 +226,5 @@ object PdfReportGenerator {
     }
 
     private fun formatGrams(value: Double): String =
-        String.format(Locale.getDefault(), "%.1f g/ngày", value)
+        String.format(Locale.US, "%.1f g/day", value)
 }

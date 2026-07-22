@@ -1,5 +1,6 @@
 package com.example.calories.ui.profile
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.calories.R
@@ -10,6 +11,7 @@ import com.example.calories.data.preferences.AvatarStorage
 import com.example.calories.data.preferences.LocalDataWiper
 import com.example.calories.data.preferences.ThemeMode
 import com.example.calories.data.preferences.UnitSystem
+import com.example.calories.data.remote.supabase.SupabaseAvatarService
 import com.example.calories.data.repository.FoodRepository
 import com.example.calories.data.repository.ProfileRepository
 import com.example.calories.data.repository.UserGoalsRepository
@@ -26,6 +28,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import android.net.Uri
+import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -86,6 +89,7 @@ class ProfileViewModel @Inject constructor(
     private val authDataStore: AuthDataStore,
     private val localDataWiper: LocalDataWiper,
     private val avatarStorage: AvatarStorage,
+    private val avatarService: SupabaseAvatarService,
 ) : ViewModel() {
 
     private val userId: String? get() = supabase.auth.currentUserOrNull()?.id
@@ -127,12 +131,15 @@ class ProfileViewModel @Inject constructor(
                     appPreferences.language,
                 ) { goal, profile, unit, theme, language ->
                     val metrics = formatMetrics(goal, unit)
+                    val avatarUrl = avatarStorage.getLocalPath(id)
+                        ?: goal?.avatarUrl
+                        ?: profile?.avatarUrl
                     ProfileUiState(
                         userName = profile?.displayName?.takeIf { it.isNotBlank() }
                             ?: authName
                             ?: "User",
                         userEmail = email,
-                        avatarUrl = profile?.avatarUrl,
+                        avatarUrl = avatarUrl,
                         goal = goal,
                         profile = profile,
                         unitSystem = unit,
@@ -171,34 +178,59 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun updateAvatar(uri: Uri) {
-        val id = userId ?: return
+        val id = userId ?: run {
+            Log.e(AVATAR_LOG_TAG, "updateAvatar skipped: no authenticated user")
+            return
+        }
         viewModelScope.launch {
             _isUpdatingAvatar.value = true
-            val result = runCatching {
-                val path = avatarStorage.saveFromUri(id, uri)
-                profileRepository.upsertProfile(avatarUrl = path, updateAvatar = true)
+            try {
+                Log.d(AVATAR_LOG_TAG, "Starting avatar update for userId=$id uri=$uri")
+
+                val localPath = avatarStorage.saveFromUri(id, uri)
+                Log.d(AVATAR_LOG_TAG, "Saved local avatar at $localPath")
+                userGoalsRepository.cacheAvatarLocally(id, localPath)
+
+                val imageFile = File(localPath)
+                Log.d(AVATAR_LOG_TAG, "Uploading ${imageFile.length()} bytes to Supabase Storage")
+                val publicUrl = avatarService.uploadAvatar(id, imageFile)
+                Log.d(AVATAR_LOG_TAG, "Storage upload complete, publicUrl=$publicUrl")
+
+                val syncedGoal = userGoalsRepository.updateAvatarUrl(id, publicUrl)
+                Log.d(
+                    AVATAR_LOG_TAG,
+                    "avatar_url synced to user_goals id=${syncedGoal.id} url=${syncedGoal.avatarUrl}",
+                )
+                _messages.emit(ProfileMessage.AvatarUpdated)
+            } catch (e: Exception) {
+                Log.e(AVATAR_LOG_TAG, "Error uploading avatar", e)
+                _messages.emit(ProfileMessage.AvatarUpdateFailed)
+            } finally {
+                _isUpdatingAvatar.value = false
             }
-            _isUpdatingAvatar.value = false
-            _messages.emit(
-                if (result.isSuccess) ProfileMessage.AvatarUpdated
-                else ProfileMessage.AvatarUpdateFailed,
-            )
         }
     }
 
     fun removeAvatar() {
-        val id = userId ?: return
+        val id = userId ?: run {
+            Log.e(AVATAR_LOG_TAG, "removeAvatar skipped: no authenticated user")
+            return
+        }
         viewModelScope.launch {
             _isUpdatingAvatar.value = true
-            val result = runCatching {
+            try {
+                Log.d(AVATAR_LOG_TAG, "Removing avatar for userId=$id")
+                avatarService.deleteAvatar(id)
                 avatarStorage.delete(id)
-                profileRepository.upsertProfile(avatarUrl = null, updateAvatar = true)
+                userGoalsRepository.updateAvatarUrl(id, null)
+                Log.d(AVATAR_LOG_TAG, "Avatar removed and avatar_url cleared in Supabase")
+                _messages.emit(ProfileMessage.AvatarRemoved)
+            } catch (e: Exception) {
+                Log.e(AVATAR_LOG_TAG, "Error removing avatar", e)
+                _messages.emit(ProfileMessage.AvatarUpdateFailed)
+            } finally {
+                _isUpdatingAvatar.value = false
             }
-            _isUpdatingAvatar.value = false
-            _messages.emit(
-                if (result.isSuccess) ProfileMessage.AvatarRemoved
-                else ProfileMessage.AvatarUpdateFailed,
-            )
         }
     }
 
@@ -338,4 +370,8 @@ class ProfileViewModel @Inject constructor(
         val bmiValue: Double? = null,
         val bmiCategoryRes: Int? = null,
     )
+
+    private companion object {
+        const val AVATAR_LOG_TAG = "AvatarUpload"
+    }
 }

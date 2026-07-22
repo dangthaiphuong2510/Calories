@@ -5,7 +5,7 @@ import android.os.Bundle
 import android.util.Patterns
 import android.widget.Toast
 import androidx.activity.viewModels
-import androidx.appcompat.app.AppCompatActivity
+import com.example.calories.ui.common.BaseActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.calories.BuildConfig
 import com.example.calories.R
@@ -18,7 +18,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
-class LoginActivity : AppCompatActivity() {
+class LoginActivity : BaseActivity() {
 
     private lateinit var binding: ActivityLoginBinding
     private val viewModel: LoginViewModel by viewModels()
@@ -101,17 +101,32 @@ class LoginActivity : AppCompatActivity() {
             }
         }
         collectLatestStarted(viewModel.navEvents) { event ->
-            val destination = when (event) {
-                LoginNavEvent.ToMain -> MainActivity::class.java
-                LoginNavEvent.ToOnboarding -> OnboardingActivity::class.java
+            when (event) {
+                LoginNavEvent.ToMain -> navigateTo(MainActivity::class.java)
+                LoginNavEvent.ToOnboarding -> navigateTo(OnboardingActivity::class.java)
+                is LoginNavEvent.PromptResendConfirmation -> showResendConfirmationDialog(event.email)
             }
-            startActivity(
-                Intent(this, destination).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                },
-            )
-            finish()
         }
+    }
+
+    private fun navigateTo(destination: Class<*>) {
+        startActivity(
+            Intent(this, destination).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            },
+        )
+        finish()
+    }
+
+    private fun showResendConfirmationDialog(email: String) {
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.auth_email_not_confirmed_title)
+            .setMessage(R.string.auth_email_not_confirmed)
+            .setPositiveButton(R.string.auth_resend_confirmation) { _, _ ->
+                viewModel.resendConfirmation(email)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     private fun validate(email: String, password: String): Boolean {

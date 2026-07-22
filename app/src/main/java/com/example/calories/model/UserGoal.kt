@@ -19,4 +19,5 @@ data class UserGoal(
     @SerialName("goal_type") val goalType: GoalType,
     val tdee: Int,
     @SerialName("daily_calories") val dailyCalories: Int,
+    @SerialName("avatar_url") val avatarUrl: String? = null,
 )

@@ -8,10 +8,6 @@ import com.google.android.gms.ads.LoadAdError
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAd
 import com.google.android.gms.ads.rewardedinterstitial.RewardedInterstitialAdLoadCallback
 
-/**
- * Pre-loads and shows a rewarded interstitial ad. Call [onProceed] when the user earns
- * the reward or when the ad is unavailable / fails to show.
- */
 class RewardedInterstitialAdHelper(
     private val activity: Activity,
     private val adUnitId: String = REWARDED_INTERSTITIAL_AD_UNIT_ID,
@@ -57,19 +53,22 @@ class RewardedInterstitialAdHelper(
             }
         }
 
-        ad.fullScreenContentCallback = object : FullScreenContentCallback() {
-            override fun onAdDismissedFullScreenContent() {
-                rewardedInterstitialAd = null
-                preload()
-            }
+        ad.fullScreenContentCallback = FullscreenAdWindowHelper.wrapCallback(activity,
+            object : FullScreenContentCallback() {
+                override fun onAdDismissedFullScreenContent() {
+                    rewardedInterstitialAd = null
+                    preload()
+                }
 
-            override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                rewardedInterstitialAd = null
-                preload()
-                proceedOnce()
-            }
-        }
+                override fun onAdFailedToShowFullScreenContent(error: AdError) {
+                    rewardedInterstitialAd = null
+                    preload()
+                    proceedOnce()
+                }
+            },
+        )
 
+        FullscreenAdWindowHelper.enterFullscreenAdMode(activity)
         ad.show(activity) { proceedOnce() }
     }
 
