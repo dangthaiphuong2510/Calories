@@ -1,7 +1,6 @@
 package com.example.calories.insights
 
 import java.time.DayOfWeek
-import java.time.LocalDate
 import kotlin.math.abs
 
 object ProgressInsightEngine {
@@ -83,6 +82,50 @@ object ProgressInsightEngine {
                 severity = InsightSeverity.POSITIVE,
                 formatArgs = listOf(onTrackCount.toString()),
             )
+        }
+
+        // Weekend spike: compare averages inside the 7-day window
+        val weekendDays = foodsInWindow.filter {
+            it.date.dayOfWeek == DayOfWeek.SATURDAY || it.date.dayOfWeek == DayOfWeek.SUNDAY
+        }
+        val weekdayDays = foodsInWindow.filter {
+            it.date.dayOfWeek != DayOfWeek.SATURDAY && it.date.dayOfWeek != DayOfWeek.SUNDAY
+        }
+        if (weekendDays.isNotEmpty() && weekdayDays.isNotEmpty()) {
+            val weekendAvg = weekendDays.map { it.calories }.average()
+            val weekdayAvg = weekdayDays.map { it.calories }.average()
+            if (weekdayAvg > 0 &&
+                weekendAvg >= weekdayAvg * ProgressInsightThresholds.WEEKEND_SPIKE_RATIO
+            ) {
+                insights += ProgressInsight(
+                    id = ProgressInsightIds.WEEKEND_CALORIE_SPIKE,
+                    severity = InsightSeverity.ACTIONABLE,
+                    action = InsightAction.OpenProgress,
+                )
+            }
+        }
+
+        // Plateau under target
+        val underSample = recentLogged.take(ProgressInsightThresholds.UNDER_TARGET_LOGGED_SAMPLE)
+        if (underSample.size >= ProgressInsightThresholds.UNDER_TARGET_LOGGED_SAMPLE) {
+            val underCount = underSample.count { it.calories < input.dailyCalorieTarget }
+            val weightStart =
+                input.today.minusDays(ProgressInsightThresholds.PLATEAU_WEIGHT_LOOKBACK_DAYS - 1)
+            val weightPoints = input.weights
+                .filter { it.date in weightStart..input.today }
+                .sortedBy { it.date }
+            if (underCount >= ProgressInsightThresholds.UNDER_TARGET_DAYS_NEEDED &&
+                weightPoints.size >= ProgressInsightThresholds.MIN_WEIGHT_POINTS_FOR_PLATEAU
+            ) {
+                val delta = abs(weightPoints.last().weightKg - weightPoints.first().weightKg)
+                if (delta <= ProgressInsightThresholds.FLAT_WEIGHT_MAX_ABS_DELTA_KG) {
+                    insights += ProgressInsight(
+                        id = ProgressInsightIds.PLATEAU_UNDER_TARGET,
+                        severity = InsightSeverity.ACTIONABLE,
+                        action = InsightAction.OpenWeightLog,
+                    )
+                }
+            }
         }
 
         return insights.take(ProgressInsightThresholds.MAX_PROGRESS_INSIGHTS)
