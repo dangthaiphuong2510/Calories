@@ -133,4 +133,69 @@ class ProgressInsightEngineTest {
         val ids = ProgressInsightEngine.evaluate(baseInput(foods, weights = emptyList())).map { it.id }
         assertTrue(ProgressInsightIds.PLATEAU_UNDER_TARGET !in ids)
     }
+
+    @Test
+    fun ranking_prefersPlateauThenWeekendThenProteinThenGapThenOnTrack() {
+        val foods = (6 downTo 0).map { offset ->
+            val date = today.minusDays(offset.toLong())
+            val cal = when (date.dayOfWeek) {
+                DayOfWeek.SATURDAY, DayOfWeek.SUNDAY -> 2500
+                else -> 1500
+            }
+            InsightFoodDay(date, cal, proteinGrams = 100.0)
+        }
+        val withGap = foods.filter {
+            it.date != today.minusDays(2) && it.date != today.minusDays(4)
+        }
+        val weights = listOf(
+            InsightWeightPoint(today.minusDays(10), 80.0),
+            InsightWeightPoint(today, 80.1),
+        )
+        val ids = ProgressInsightEngine.evaluate(baseInput(withGap, weights)).map { it.id }
+        val order = listOf(
+            ProgressInsightIds.PLATEAU_UNDER_TARGET,
+            ProgressInsightIds.WEEKEND_CALORIE_SPIKE,
+            ProgressInsightIds.PROTEIN_SHORTFALL,
+            ProgressInsightIds.LOGGING_GAP,
+            ProgressInsightIds.ON_TRACK_STREAK,
+        )
+        val present = order.filter { it in ids }
+        assertEquals(present, ids.filter { it in order })
+        assertTrue(ids.size <= ProgressInsightThresholds.MAX_PROGRESS_INSIGHTS)
+    }
+
+    @Test
+    fun selectHomeCallout_prefersActionableOverLoggingGap() {
+        val insights = listOf(
+            ProgressInsight(ProgressInsightIds.LOGGING_GAP, InsightSeverity.INFO),
+            ProgressInsight(ProgressInsightIds.PROTEIN_SHORTFALL, InsightSeverity.ACTIONABLE),
+            ProgressInsight(ProgressInsightIds.ON_TRACK_STREAK, InsightSeverity.POSITIVE),
+        )
+        val pick = ProgressInsightEngine.selectHomeCallout(insights, dismissedIds = emptySet())
+        assertEquals(ProgressInsightIds.PROTEIN_SHORTFALL, pick?.id)
+    }
+
+    @Test
+    fun selectHomeCallout_fallsBackToLoggingGapWhenNoActionable() {
+        val insights = listOf(
+            ProgressInsight(ProgressInsightIds.LOGGING_GAP, InsightSeverity.INFO),
+            ProgressInsight(ProgressInsightIds.ON_TRACK_STREAK, InsightSeverity.POSITIVE),
+        )
+        val pick = ProgressInsightEngine.selectHomeCallout(insights, emptySet())
+        assertEquals(ProgressInsightIds.LOGGING_GAP, pick?.id)
+    }
+
+    @Test
+    fun selectHomeCallout_skipsDismissedAndNeverReturnsPositive() {
+        val insights = listOf(
+            ProgressInsight(ProgressInsightIds.PROTEIN_SHORTFALL, InsightSeverity.ACTIONABLE),
+            ProgressInsight(ProgressInsightIds.LOGGING_GAP, InsightSeverity.INFO),
+            ProgressInsight(ProgressInsightIds.ON_TRACK_STREAK, InsightSeverity.POSITIVE),
+        )
+        val pick = ProgressInsightEngine.selectHomeCallout(
+            insights,
+            dismissedIds = setOf(ProgressInsightIds.PROTEIN_SHORTFALL),
+        )
+        assertEquals(ProgressInsightIds.LOGGING_GAP, pick?.id)
+    }
 }

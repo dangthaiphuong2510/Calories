@@ -128,7 +128,18 @@ object ProgressInsightEngine {
             }
         }
 
-        return insights.take(ProgressInsightThresholds.MAX_PROGRESS_INSIGHTS)
+        val rank = listOf(
+            ProgressInsightIds.PLATEAU_UNDER_TARGET,
+            ProgressInsightIds.WEEKEND_CALORIE_SPIKE,
+            ProgressInsightIds.PROTEIN_SHORTFALL,
+            ProgressInsightIds.LOGGING_GAP,
+            ProgressInsightIds.ON_TRACK_STREAK,
+        )
+        return insights
+            .sortedBy { insight ->
+                rank.indexOf(insight.id).let { if (it < 0) Int.MAX_VALUE else it }
+            }
+            .take(ProgressInsightThresholds.MAX_PROGRESS_INSIGHTS)
     }
 
     fun selectHomeCallout(
