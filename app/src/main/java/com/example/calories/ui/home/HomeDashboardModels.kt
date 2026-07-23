@@ -2,6 +2,7 @@ package com.example.calories.ui.home
 
 import com.example.calories.R
 import com.example.calories.data.preferences.AppLanguage
+import com.example.calories.insights.ProgressInsight
 import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.model.enums.MealType
 import java.time.LocalDate
@@ -74,6 +75,7 @@ data class HomeUiState(
     val unitSystem: UnitSystem = UnitSystem.METRIC,
     val language: AppLanguage = AppLanguage.ENGLISH,
     val mealDetailsExpanded: Boolean = false,
+    val activeCallout: ProgressInsight? = null,
 ) {
     val caloriesRemaining: Int
         get() = (dailyGoal - totalEaten + totalBurned).coerceAtLeast(0)
@@ -114,4 +116,5 @@ sealed interface HomeNavEvent {
     ) : HomeNavEvent
     data object OpenExerciseLogger : HomeNavEvent
     data object OpenNotificationSettings : HomeNavEvent
+    data object OpenProgressInsights : HomeNavEvent
 }

@@ -13,6 +13,9 @@ interface ExerciseEntryDao {
     @Query("SELECT * FROM exercise_entries WHERE userId = :userId ORDER BY createdAt DESC")
     fun observeAll(userId: String): Flow<List<ExerciseEntryEntity>>
 
+    @Query("SELECT * FROM exercise_entries WHERE userId = :userId ORDER BY createdAt DESC")
+    suspend fun getAll(userId: String): List<ExerciseEntryEntity>
+
     @Query("SELECT * FROM exercise_entries WHERE id = :id LIMIT 1")
     suspend fun getById(id: String): ExerciseEntryEntity?
 

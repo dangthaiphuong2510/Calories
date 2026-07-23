@@ -44,9 +44,9 @@
         </service>
 
         <activity
-            android:name=".ui.splash.SplashActivity"
+            android:name=".ui.MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Calories">
+            android:theme="@style/Theme.App.Starting">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -90,9 +90,6 @@
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
 
-        <activity
-            android:name=".ui.MainActivity"
-            android:exported="false" />
 
         <activity
             android:name=".ui.food.SearchFoodActivity"
@@ -130,6 +127,18 @@
                 <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="android.intent.action.TIME_CHANGED" />
             </intent-filter>
+        </receiver>
+
+        <receiver
+            android:name=".widget.CaloriesHomeWidgetProvider"
+            android:exported="true"
+            android:label="@string/widget_calories_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/calories_home_widget_info" />
         </receiver>
 
         <provider

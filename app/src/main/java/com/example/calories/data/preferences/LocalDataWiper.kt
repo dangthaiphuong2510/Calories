@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.calories.data.local.CaloriesDatabase
 import com.example.calories.notifications.ReminderIds
 import com.example.calories.notifications.ReminderScheduler
+import com.example.calories.widget.WidgetRefreshNotifier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -16,6 +17,8 @@ class LocalDataWiper @Inject constructor(
     private val database: CaloriesDatabase,
     private val appPreferences: AppPreferences,
     private val authDataStore: AuthDataStore,
+    private val insightPreferences: InsightPreferences,
+    private val widgetRefreshNotifier: WidgetRefreshNotifier,
     private val reminderScheduler: ReminderScheduler,
 ) {
     suspend fun wipeAll() = withContext(Dispatchers.IO) {
@@ -26,6 +29,8 @@ class LocalDataWiper @Inject constructor(
             .edit()
             .clear()
             .apply()
+        insightPreferences.clear()
+        widgetRefreshNotifier.notifyDataChanged()
         context.getSharedPreferences(EXERCISE_PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .clear()

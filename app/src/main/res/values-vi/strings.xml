@@ -108,6 +108,21 @@
     <string name="weekly_macro_distribution">Phân bố macro tuần</string>
     <string name="legend_calories_consumed">Đã nạp</string>
     <string name="legend_calories_burned">Đã đốt</string>
+    <string name="insights_section_title">Nhận xét tuần này</string>
+    <string name="insights_insufficient_title">Tiếp tục ghi nhật ký</string>
+    <string name="insights_insufficient_body">Ghi thêm vài ngày thực phẩm để mở khóa nhận xét cá nhân.</string>
+    <string name="insights_plateau_title">Cân không đổi</string>
+    <string name="insights_plateau_body">Nhật ký cho thấy nhiều ngày dưới mục tiêu nhưng cân gần như đứng yên. Hãy kiểm tra khẩu phần hoặc ngày thiếu log.</string>
+    <string name="insights_weekend_title">Cuối tuần cao calo</string>
+    <string name="insights_weekend_body">Nhật ký cho thấy lượng ăn cuối tuần cao hơn rõ so với ngày thường.</string>
+    <string name="insights_protein_title">Protein đang thấp</string>
+    <string name="insights_protein_body">Protein dưới ~80% mục tiêu ở hầu hết các ngày gần đây có ghi nhật ký.</string>
+    <string name="insights_logging_gap_title">Thiếu nhật ký món ăn</string>
+    <string name="insights_logging_gap_body">%1$s ngày trong tuần qua chưa có nhật ký món ăn, xu hướng có thể chưa đủ.</string>
+    <string name="insights_on_track_title">Duy trì tốt</string>
+    <string name="insights_on_track_body">Bạn gần mục tiêu calo trong %1$s ngày tuần này.</string>
+    <string name="insights_dismiss">Đóng</string>
+    <string name="insights_home_callout_cd">Nhận xét tiến độ</string>
 
     <!-- Camera / food scan -->
     <string name="food_not_detected_title">Không nhận diện được món ăn</string>
@@ -140,4 +155,9 @@
     <string name="pdf_export_success">Báo cáo dinh dưỡng đã sẵn sàng.</string>
     <string name="open_pdf">Mở PDF</string>
     <string name="pdf_viewer_unavailable">Không tìm thấy ứng dụng xem PDF trên thiết bị.</string>
+    <string name="widget_calories_name">Calories</string>
+    <string name="widget_calories_description">Tiến độ calo hôm nay và nhận xét tuần</string>
+    <string name="widget_sign_in_prompt">Đăng nhập để theo dõi calo</string>
+    <string name="widget_no_goal_prompt">Đặt mục tiêu trong ứng dụng</string>
+    <string name="widget_tap_to_open">Chạm để mở Calories</string>
 </resources>

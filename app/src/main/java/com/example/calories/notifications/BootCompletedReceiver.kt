@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.example.calories.data.preferences.NotificationPreferences
+import com.example.calories.widget.WidgetRefreshBridge
 
 /**
  * Restores exact alarms after reboot or app update (AlarmManager does not persist them).
@@ -23,5 +24,6 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val appContext = context.applicationContext
         val settings = NotificationPreferences(appContext).load()
         ReminderScheduler(appContext).syncAll(settings)
+        WidgetRefreshBridge.refresh(appContext)
     }
 }

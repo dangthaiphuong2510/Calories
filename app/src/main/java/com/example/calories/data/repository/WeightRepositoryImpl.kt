@@ -6,6 +6,7 @@ import com.example.calories.data.local.mapper.toDomain
 import com.example.calories.data.local.mapper.toEntity
 import com.example.calories.model.WeightEntry
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.widget.WidgetRefreshNotifier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
@@ -21,6 +22,7 @@ import javax.inject.Singleton
 class WeightRepositoryImpl @Inject constructor(
     private val weightEntryDao: WeightEntryDao,
     private val supabase: SupabaseClient,
+    private val widgetRefreshNotifier: WidgetRefreshNotifier,
 ) : WeightRepository {
 
     override fun observeWeightEntries(userId: String): Flow<List<WeightEntry>> {
@@ -37,7 +39,9 @@ class WeightRepositoryImpl @Inject constructor(
             weightKg = weightKg,
             recordedAt = recordedAt,
         )
-        return persistAndSync(entry)
+        return persistAndSync(entry).also {
+            widgetRefreshNotifier.notifyDataChanged()
+        }
     }
 
     override suspend fun upsertWeightForDate(weightKg: Double, date: LocalDate): WeightEntry {
@@ -59,7 +63,9 @@ class WeightRepositoryImpl @Inject constructor(
             // Bump timestamp so Progress "current" resolves to this save.
             recordedAt = DateTimeUtils.atNowOnDateIso(date),
         )
-        return persistAndSync(entry)
+        return persistAndSync(entry).also {
+            widgetRefreshNotifier.notifyDataChanged()
+        }
     }
 
     override suspend fun deleteWeightEntry(id: String) {
@@ -76,6 +82,7 @@ class WeightRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete weight entry remotely id=$id", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     override suspend fun fetchAndSync() {
@@ -133,6 +140,7 @@ class WeightRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh weight entries from Supabase", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     private suspend fun persistAndSync(entry: WeightEntry): WeightEntry {

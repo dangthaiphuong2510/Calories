@@ -23,7 +23,6 @@
 
         <item name="android:navigationBarColor">@android:color/transparent</item>
 
-        <!-- Edge-to-edge: activities apply insets manually; fullscreen ads temporarily use opaque bars. -->
         <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
 
         <item name="bottomNavigationStyle">@style/Widget.Calories.BottomNavigationView</item>
@@ -116,6 +115,14 @@
 
         <item name="cornerSize">50%</item>
 
+    </style>
+
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/white</item>
+
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_new_round</item>
+
+        <item name="postSplashScreenTheme">@style/Theme.Calories</item>
     </style>
 
 </resources>

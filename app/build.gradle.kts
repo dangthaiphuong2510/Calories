@@ -119,6 +119,8 @@ dependencies {
     implementation("com.google.guava:guava:33.3.1-android")
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 
+    implementation("androidx.core:core-splashscreen:1.0.1")
+
     implementation(libs.androidx.datastore.preferences)
 
     implementation(libs.androidx.room.runtime)
