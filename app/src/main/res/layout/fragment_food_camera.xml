@@ -6,7 +6,6 @@
     android:layout_height="match_parent"
     android:background="@color/black">
 
-    <!-- 1. Camera Preview tràn full toàn màn hình -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="0dp"
@@ -16,7 +15,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 2. Header Container chứa Cancel và Text Hint -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/headerContainer"
         android:layout_width="0dp"
@@ -56,7 +54,6 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <!-- 3. Progress Bar khi đang xử lý AI -->
     <ProgressBar
         android:id="@+id/progressAnalyzing"
         android:layout_width="wrap_content"
@@ -67,7 +64,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <!-- 4. Cụm nút bấm phía dưới (Capture, Gallery, Flip) -->
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/fabCapture"
         android:layout_width="wrap_content"

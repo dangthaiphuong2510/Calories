@@ -14,6 +14,7 @@ import androidx.activity.viewModels
 import com.example.calories.ui.common.BaseActivity
 import com.example.calories.ui.common.EdgeToEdgeHost
 import androidx.core.content.ContextCompat
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.fragment.app.Fragment
@@ -60,7 +61,11 @@ class MainActivity : BaseActivity(), EdgeToEdgeHost {
     ) { /* User can grant later from notification settings */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
+
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
+
 
         lifecycleScope.launch {
             if (!viewModel.shouldAllowAccess()) {
@@ -121,6 +126,25 @@ class MainActivity : BaseActivity(), EdgeToEdgeHost {
         } else {
             showTab(activeTabTag, updateBottomNav = false)
             selectBottomNavItem(activeTabTag)
+        }
+
+        handleWidgetIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetIntent(intent)
+    }
+
+    private fun handleWidgetIntent(intent: Intent?) {
+        if (intent?.getBooleanExtra(
+                com.example.calories.widget.CaloriesHomeWidgetProvider.EXTRA_OPEN_PROGRESS,
+                false,
+            ) == true
+        ) {
+            intent.removeExtra(com.example.calories.widget.CaloriesHomeWidgetProvider.EXTRA_OPEN_PROGRESS)
+            openProgressTab()
         }
     }
 

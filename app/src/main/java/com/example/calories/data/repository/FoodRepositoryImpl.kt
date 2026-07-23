@@ -11,6 +11,7 @@ import com.example.calories.model.FoodDictionaryItem
 import com.example.calories.model.FoodEntry
 import com.example.calories.model.FoodSearchFilter
 import com.example.calories.model.enums.MealType
+import com.example.calories.widget.WidgetRefreshNotifier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
@@ -26,6 +27,7 @@ class FoodRepositoryImpl @Inject constructor(
     private val foodEntryDao: FoodEntryDao,
     private val favoriteFoodDao: FavoriteFoodDao,
     private val supabase: SupabaseClient,
+    private val widgetRefreshNotifier: WidgetRefreshNotifier,
 ) : FoodRepository {
 
     override fun observeFoodEntries(userId: String): Flow<List<FoodEntry>> {
@@ -136,6 +138,7 @@ class FoodRepositoryImpl @Inject constructor(
             entry
         }
 
+        widgetRefreshNotifier.notifyDataChanged()
         return savedEntry
     }
 
@@ -161,6 +164,8 @@ class FoodRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to update food entry remotely id=${entry.id}", e)
             entry
+        }.also {
+            widgetRefreshNotifier.notifyDataChanged()
         }
     }
 
@@ -178,6 +183,7 @@ class FoodRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete food entry remotely id=$id", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     override suspend fun fetchAndSync() {
@@ -241,6 +247,7 @@ class FoodRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh food entries from Supabase", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     private fun currentUserId(): String? = supabase.auth.currentUserOrNull()?.id

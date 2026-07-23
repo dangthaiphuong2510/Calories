@@ -9,6 +9,7 @@ import com.example.calories.data.local.mapper.toEntity
 import com.example.calories.model.ExerciseEntry
 import com.example.calories.model.ExercisePreset
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.widget.WidgetRefreshNotifier
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
@@ -31,6 +32,7 @@ class ExerciseRepositoryImpl @Inject constructor(
     private val exerciseEntryDao: ExerciseEntryDao,
     private val supabase: SupabaseClient,
     @ApplicationContext context: Context,
+    private val widgetRefreshNotifier: WidgetRefreshNotifier,
 ) : ExerciseRepository {
 
     private val prefs: SharedPreferences =
@@ -76,9 +78,11 @@ class ExerciseRepositoryImpl @Inject constructor(
                 }
                 .decodeSingle<ExerciseEntry>()
             exerciseEntryDao.upsert(remote.toEntity(isDirty = false))
+            widgetRefreshNotifier.notifyDataChanged()
             return remote
         } catch (e: Exception) {
             Log.e(TAG, "Failed to sync new exercise entry to Supabase", e)
+            widgetRefreshNotifier.notifyDataChanged()
             return entry
         }
     }
@@ -97,6 +101,7 @@ class ExerciseRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to delete exercise entry remotely id=$id", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     override suspend fun addCustomExercise(
@@ -173,6 +178,7 @@ class ExerciseRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh exercise entries from Supabase", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     private fun loadCustom(): List<ExercisePreset> {

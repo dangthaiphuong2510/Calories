@@ -5,6 +5,7 @@ import com.example.calories.data.local.dao.UserGoalDao
 import com.example.calories.data.local.mapper.toDomain
 import com.example.calories.data.local.mapper.toEntity
 import com.example.calories.model.UserGoal
+import com.example.calories.widget.WidgetRefreshNotifier
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.postgrest.from
@@ -19,6 +20,7 @@ import javax.inject.Singleton
 class UserGoalsRepositoryImpl @Inject constructor(
     private val userGoalDao: UserGoalDao,
     private val supabase: SupabaseClient,
+    private val widgetRefreshNotifier: WidgetRefreshNotifier,
 ) : UserGoalsRepository {
 
     override fun observeGoal(userId: String): Flow<UserGoal?> {
@@ -36,9 +38,11 @@ class UserGoalsRepositoryImpl @Inject constructor(
                 }
                 .decodeSingle<UserGoal>()
             userGoalDao.upsert(remote.toEntity(isDirty = false))
+            widgetRefreshNotifier.notifyDataChanged()
             return remote
         } catch (e: Exception) {
             Log.e(TAG, "Failed to sync user goal to Supabase", e)
+            widgetRefreshNotifier.notifyDataChanged()
             return goal
         }
     }
@@ -139,6 +143,7 @@ class UserGoalsRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Log.e(TAG, "Failed to refresh user goal from Supabase", e)
         }
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     private fun currentUserId(): String? = supabase.auth.currentUserOrNull()?.id

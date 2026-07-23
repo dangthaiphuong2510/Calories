@@ -32,6 +32,7 @@ import com.example.calories.ui.common.UiEvent
 import com.example.calories.util.CalorieCalculator
 import com.example.calories.util.DateTimeUtils
 import com.example.calories.util.UnitConverter
+import com.example.calories.widget.WidgetRefreshNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.jan.supabase.SupabaseClient
@@ -70,6 +71,7 @@ class HomeViewModel @Inject constructor(
     private val insightPreferences: InsightPreferences,
     private val appPreferences: AppPreferences,
     private val reminderScheduler: ReminderScheduler,
+    private val widgetRefreshNotifier: WidgetRefreshNotifier,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -344,6 +346,7 @@ class HomeViewModel @Inject constructor(
     fun dismissCallout() {
         val id = uiState.value.activeCallout?.id ?: return
         insightPreferences.dismiss(id)
+        widgetRefreshNotifier.notifyDataChanged()
     }
 
     fun onCalloutClicked() {

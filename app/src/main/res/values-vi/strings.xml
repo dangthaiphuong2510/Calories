@@ -155,4 +155,9 @@
     <string name="pdf_export_success">Báo cáo dinh dưỡng đã sẵn sàng.</string>
     <string name="open_pdf">Mở PDF</string>
     <string name="pdf_viewer_unavailable">Không tìm thấy ứng dụng xem PDF trên thiết bị.</string>
+    <string name="widget_calories_name">Calories</string>
+    <string name="widget_calories_description">Tiến độ calo hôm nay và nhận xét tuần</string>
+    <string name="widget_sign_in_prompt">Đăng nhập để theo dõi calo</string>
+    <string name="widget_no_goal_prompt">Đặt mục tiêu trong ứng dụng</string>
+    <string name="widget_tap_to_open">Chạm để mở Calories</string>
 </resources>
