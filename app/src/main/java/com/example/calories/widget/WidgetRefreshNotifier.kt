@@ -6,8 +6,8 @@ import javax.inject.Singleton
 @Singleton
 class WidgetRefreshNotifier @Inject constructor(
     private val widgetUpdater: CaloriesWidgetUpdater,
-) {
-    fun notifyDataChanged() {
+) : WidgetRefresher {
+    override fun notifyDataChanged() {
         widgetUpdater.scheduleRefresh()
     }
 }

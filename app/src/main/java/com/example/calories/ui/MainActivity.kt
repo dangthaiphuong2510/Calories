@@ -139,12 +139,12 @@ class MainActivity : BaseActivity(), EdgeToEdgeHost {
 
     private fun handleWidgetIntent(intent: Intent?) {
         if (intent?.getBooleanExtra(
-                com.example.calories.widget.CaloriesHomeWidgetProvider.EXTRA_OPEN_PROGRESS,
+                com.example.calories.widget.CaloriesHomeWidgetProvider.EXTRA_OPEN_HOME,
                 false,
             ) == true
         ) {
-            intent.removeExtra(com.example.calories.widget.CaloriesHomeWidgetProvider.EXTRA_OPEN_PROGRESS)
-            openProgressTab()
+            intent.removeExtra(com.example.calories.widget.CaloriesHomeWidgetProvider.EXTRA_OPEN_HOME)
+            navigateToHome()
         }
     }
 
@@ -172,7 +172,6 @@ class MainActivity : BaseActivity(), EdgeToEdgeHost {
                 R.id.nav_profile,
                     -> {
                     val tag = tagFor(item.itemId)
-                    // User tap already updated selection; skip if we're already on this tab.
                     if (tag == activeTabTag && isTabVisible(tag)) {
                         return@setOnItemSelectedListener true
                     }
@@ -180,7 +179,6 @@ class MainActivity : BaseActivity(), EdgeToEdgeHost {
                         CAMERA_BACK_STACK,
                         FragmentManager.POP_BACK_STACK_INCLUSIVE,
                     )
-                    // Do not update bottom nav here — the listener fired because the user selected it.
                     showTab(tag, updateBottomNav = false)
                     true
                 }

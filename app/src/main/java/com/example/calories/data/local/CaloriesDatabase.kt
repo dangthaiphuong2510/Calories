@@ -2,6 +2,7 @@ package com.example.calories.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import com.example.calories.data.local.dao.DailyStepsDao
 import com.example.calories.data.local.dao.ExerciseEntryDao
 import com.example.calories.data.local.dao.FavoriteFoodDao
 import com.example.calories.data.local.dao.FoodEntryDao
@@ -10,6 +11,7 @@ import com.example.calories.data.local.dao.ProfileDao
 import com.example.calories.data.local.dao.UserGoalDao
 import com.example.calories.data.local.dao.WaterEntryDao
 import com.example.calories.data.local.dao.WeightEntryDao
+import com.example.calories.data.local.entity.DailyStepsEntity
 import com.example.calories.data.local.entity.ExerciseEntryEntity
 import com.example.calories.data.local.entity.FavoriteFoodEntity
 import com.example.calories.data.local.entity.FoodEntryEntity
@@ -29,8 +31,9 @@ import com.example.calories.data.local.entity.WeightEntryEntity
         WaterEntryEntity::class,
         ProfileEntity::class,
         FavoriteFoodEntity::class,
+        DailyStepsEntity::class,
     ],
-    version = 5,
+    version = 7,
     exportSchema = false,
 )
 abstract class CaloriesDatabase : RoomDatabase() {
@@ -42,4 +45,5 @@ abstract class CaloriesDatabase : RoomDatabase() {
     abstract fun waterEntryDao(): WaterEntryDao
     abstract fun profileDao(): ProfileDao
     abstract fun favoriteFoodDao(): FavoriteFoodDao
+    abstract fun dailyStepsDao(): DailyStepsDao
 }

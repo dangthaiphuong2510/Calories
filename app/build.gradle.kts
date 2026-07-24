@@ -122,12 +122,15 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.0.1")
 
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.health.connect.client)
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
 
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.mockk)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

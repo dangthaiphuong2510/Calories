@@ -16,6 +16,9 @@ interface UserGoalDao {
     @Query("SELECT * FROM user_goals WHERE userId = :userId LIMIT 1")
     suspend fun getForUser(userId: String): UserGoalEntity?
 
+    @Query("SELECT userId FROM user_goals LIMIT 1")
+    suspend fun getAnyUserId(): String?
+
     @Query("SELECT * FROM user_goals WHERE userId = :userId AND isDirty = 1")
     suspend fun getDirty(userId: String): List<UserGoalEntity>
 

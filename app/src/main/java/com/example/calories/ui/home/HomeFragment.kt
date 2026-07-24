@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.health.connect.client.PermissionController
 import com.example.calories.R
 import com.example.calories.databinding.FragmentHomeBinding
 import com.example.calories.databinding.ItemHomeExerciseBinding
@@ -71,6 +72,12 @@ class HomeFragment : Fragment() {
         ActivityResultContracts.StartActivityForResult(),
     ) { /* StateFlow in repository updates Home automatically */ }
 
+    private val healthConnectPermissionLauncher = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract(),
+    ) { granted ->
+        viewModel.onHealthConnectPermissionsResult(granted)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -125,6 +132,9 @@ class HomeFragment : Fragment() {
 
         binding.sectionExercise.root.setOnClickListener { viewModel.onExerciseCardClicked() }
         binding.sectionExercise.btnAddExercise.setOnClickListener { viewModel.onExerciseCardClicked() }
+        binding.sectionExercise.btnConnectSteps.setOnClickListener {
+            viewModel.ensureStepsPermissionAndRefresh()
+        }
 
         binding.sectionWeight.btnWeightMinus.setOnClickListener { viewModel.adjustWeight(-0.1) }
         binding.sectionWeight.btnWeightPlus.setOnClickListener { viewModel.adjustWeight(+0.1) }
@@ -166,6 +176,9 @@ class HomeFragment : Fragment() {
                 HomeNavEvent.OpenProgressInsights ->
                     (activity as? MainActivity)?.openProgressTab()
             }
+        }
+        viewLifecycleOwner.collectLatestStarted(viewModel.requestStepsPermission) {
+            healthConnectPermissionLauncher.launch(viewModel.stepsReadPermissions)
         }
     }
 
@@ -458,6 +471,7 @@ class HomeFragment : Fragment() {
 
     private fun bindExerciseCard(state: HomeUiState) {
         val card = binding.sectionExercise
+        bindStepsRow(state)
         card.llExercises.removeAllViews()
         if (state.exercises.isEmpty()) {
             card.llExercises.visibility = View.GONE
@@ -469,9 +483,30 @@ class HomeFragment : Fragment() {
         state.exercises.forEach { exercise ->
             val row = ItemHomeExerciseBinding.inflate(layoutInflater, card.llExercises, false)
             row.tvExerciseName.text = exercise.name
-            row.tvExerciseCalories.text =
-                getString(R.string.exercise_calories_format, exercise.caloriesBurned)
+            if (exercise.isHealthConnectSteps) {
+                row.tvExerciseCalories.visibility = View.GONE
+            } else {
+                row.tvExerciseCalories.visibility = View.VISIBLE
+                row.tvExerciseCalories.text =
+                    getString(R.string.exercise_calories_format, exercise.caloriesBurned)
+            }
             card.llExercises.addView(row.root)
+        }
+    }
+
+    private fun bindStepsRow(state: HomeUiState) {
+        val card = binding.sectionExercise
+        val isToday = state.currentDate == DateTimeUtils.today()
+        if (!state.healthConnectAvailable || !isToday) {
+            card.rowSteps.visibility = View.GONE
+            return
+        }
+
+        card.rowSteps.visibility = View.VISIBLE
+        card.btnConnectSteps.visibility = if (state.stepsPermissionGranted) {
+            View.GONE
+        } else {
+            View.VISIBLE
         }
     }
 
@@ -524,6 +559,11 @@ class HomeFragment : Fragment() {
                 )
             },
         )
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshStepsAccess()
     }
 
     override fun onDestroyView() {

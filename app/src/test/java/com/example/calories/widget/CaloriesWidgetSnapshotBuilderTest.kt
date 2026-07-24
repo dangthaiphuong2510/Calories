@@ -10,6 +10,7 @@ import com.example.calories.model.enums.Gender
 import com.example.calories.model.enums.GoalType
 import com.example.calories.model.enums.MealType
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.WaterDefaults
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -58,6 +59,7 @@ class CaloriesWidgetSnapshotBuilderTest {
             weights = emptyList(),
             todayExercises = emptyList(),
             dismissedIds = emptySet(),
+            waterIntakeMl = 0,
             today = today,
         )
         assertEquals(CaloriesWidgetDisplayMode.SIGNED_OUT, snapshot.displayMode)
@@ -82,6 +84,7 @@ class CaloriesWidgetSnapshotBuilderTest {
                 ),
             ),
             dismissedIds = emptySet(),
+            waterIntakeMl = 0,
             today = today,
         )
         assertEquals(2000, snapshot.dailyGoal)
@@ -113,6 +116,7 @@ class CaloriesWidgetSnapshotBuilderTest {
             weights = weights,
             todayExercises = emptyList(),
             dismissedIds = setOf(ProgressInsightIds.PLATEAU_UNDER_TARGET),
+            waterIntakeMl = 0,
             today = today,
         )
         assertEquals(ProgressInsightIds.WEEKEND_CALORIE_SPIKE, snapshot.activeInsight?.id)
@@ -128,9 +132,45 @@ class CaloriesWidgetSnapshotBuilderTest {
             weights = emptyList(),
             todayExercises = emptyList(),
             dismissedIds = emptySet(),
+            waterIntakeMl = 0,
             today = today,
         )
         assertEquals(CaloriesWidgetDisplayMode.NO_GOAL, snapshot.displayMode)
         assertNull(snapshot.activeInsight)
+    }
+
+    @Test
+    fun waterProgress_matchesHomeUiState() {
+        val snapshot = CaloriesWidgetSnapshotBuilder.build(
+            isSignedIn = true,
+            goal = goal(),
+            todayFoods = emptyList(),
+            allFoods = emptyList(),
+            weights = emptyList(),
+            todayExercises = emptyList(),
+            dismissedIds = emptySet(),
+            waterIntakeMl = 500,
+            today = today,
+        )
+        assertEquals(500, snapshot.waterIntakeMl)
+        assertEquals(WaterDefaults.GOAL_ML, snapshot.waterGoalMl)
+        assertEquals(25, snapshot.waterProgressPercent)
+    }
+
+    @Test
+    fun signedOut_hidesWaterByUsingZeroDisplayMode() {
+        val snapshot = CaloriesWidgetSnapshotBuilder.build(
+            isSignedIn = false,
+            goal = null,
+            todayFoods = emptyList(),
+            allFoods = emptyList(),
+            weights = emptyList(),
+            todayExercises = emptyList(),
+            dismissedIds = emptySet(),
+            waterIntakeMl = 0,
+            today = today,
+        )
+        assertEquals(CaloriesWidgetDisplayMode.SIGNED_OUT, snapshot.displayMode)
+        assertEquals(0, snapshot.waterIntakeMl)
     }
 }

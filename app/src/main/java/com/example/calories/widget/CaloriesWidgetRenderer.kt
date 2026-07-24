@@ -15,6 +15,7 @@ object CaloriesWidgetRenderer {
             CaloriesWidgetDisplayMode.SIGNED_OUT -> {
                 views.setViewVisibility(R.id.tvWidgetMessage, View.VISIBLE)
                 views.setViewVisibility(R.id.sectionProgress, View.GONE)
+                views.setViewVisibility(R.id.sectionWater, View.GONE)
                 views.setViewVisibility(R.id.sectionInsight, View.GONE)
                 views.setTextViewText(
                     R.id.tvWidgetMessage,
@@ -24,6 +25,7 @@ object CaloriesWidgetRenderer {
             CaloriesWidgetDisplayMode.NO_GOAL -> {
                 views.setViewVisibility(R.id.tvWidgetMessage, View.VISIBLE)
                 views.setViewVisibility(R.id.sectionProgress, View.GONE)
+                views.setViewVisibility(R.id.sectionWater, View.GONE)
                 views.setViewVisibility(R.id.sectionInsight, View.GONE)
                 views.setTextViewText(
                     R.id.tvWidgetMessage,
@@ -38,6 +40,17 @@ object CaloriesWidgetRenderer {
                 views.setTextViewText(R.id.tvGoal, snapshot.dailyGoal.toString())
                 views.setTextViewText(R.id.tvEaten, snapshot.totalEaten.toString())
                 views.setProgressBar(R.id.progressCalories, 100, snapshot.progressPercent, false)
+
+                views.setViewVisibility(R.id.sectionWater, View.VISIBLE)
+                views.setTextViewText(
+                    R.id.tvWaterProgress,
+                    context.getString(
+                        R.string.water_progress_format,
+                        snapshot.waterIntakeMl,
+                        snapshot.waterGoalMl,
+                    ),
+                )
+                views.setProgressBar(R.id.progressWater, 100, snapshot.waterProgressPercent, false)
 
                 val insight = snapshot.activeInsight
                 if (insight == null) {

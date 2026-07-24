@@ -156,8 +156,14 @@
     <string name="open_pdf">Mở PDF</string>
     <string name="pdf_viewer_unavailable">Không tìm thấy ứng dụng xem PDF trên thiết bị.</string>
     <string name="widget_calories_name">Calories</string>
-    <string name="widget_calories_description">Tiến độ calo hôm nay và nhận xét tuần</string>
+    <string name="widget_calories_description">Calo, nước hôm nay và nhận xét tuần</string>
     <string name="widget_sign_in_prompt">Đăng nhập để theo dõi calo</string>
     <string name="widget_no_goal_prompt">Đặt mục tiêu trong ứng dụng</string>
     <string name="widget_tap_to_open">Chạm để mở Calories</string>
+    <string name="widget_add_water_button">+ 250ml</string>
+    <string name="steps_title">Bước chân</string>
+    <string name="steps_count_format">%1$,d bước</string>
+    <string name="steps_exercise_entry_format">%1$,d bước (-%2$d kcal)</string>
+    <string name="steps_connect_health_connect">Kết nối Health Connect</string>
+    <string name="steps_permission_denied">Đồng bộ bước chân cần quyền Health Connect</string>
 </resources>
