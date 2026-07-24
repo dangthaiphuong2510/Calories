@@ -50,6 +50,7 @@ data class ExerciseLogItem(
     val id: String,
     val name: String,
     val caloriesBurned: Int,
+    val isHealthConnectSteps: Boolean = false,
 )
 
 data class HomeUiState(
@@ -71,6 +72,9 @@ data class HomeUiState(
     val dinner: MealSection = MealSection(MealType.DINNER, R.string.meal_dinner),
     val snacks: MealSection = MealSection(MealType.SNACKS, R.string.meal_snacks),
     val exercises: List<ExerciseLogItem> = emptyList(),
+    val todaySteps: Long? = null,
+    val healthConnectAvailable: Boolean = false,
+    val stepsPermissionGranted: Boolean = false,
     val todayWeightKg: Double? = null,
     val unitSystem: UnitSystem = UnitSystem.METRIC,
     val language: AppLanguage = AppLanguage.ENGLISH,

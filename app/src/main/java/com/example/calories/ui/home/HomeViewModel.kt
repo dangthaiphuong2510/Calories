@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.calories.R
+import com.example.calories.data.health.HealthConnectManager
 import com.example.calories.data.preferences.AppLanguage
 import com.example.calories.data.preferences.AppPreferences
 import com.example.calories.data.preferences.InsightPreferences
@@ -16,6 +17,7 @@ import com.example.calories.data.preferences.NotificationPreferences.Companion.M
 import com.example.calories.data.preferences.UnitSystem
 import com.example.calories.data.repository.ExerciseRepository
 import com.example.calories.data.repository.FoodRepository
+import com.example.calories.data.repository.HealthConnectRepository
 import com.example.calories.data.repository.UserGoalsRepository
 import com.example.calories.data.repository.WaterRepository
 import com.example.calories.data.repository.WeightRepository
@@ -31,6 +33,8 @@ import com.example.calories.notifications.ReminderScheduler
 import com.example.calories.ui.common.UiEvent
 import com.example.calories.util.CalorieCalculator
 import com.example.calories.util.DateTimeUtils
+import com.example.calories.util.StepCalorieCalculator
+import com.example.calories.util.WaterDefaults
 import com.example.calories.util.UnitConverter
 import com.example.calories.widget.WidgetRefreshNotifier
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -67,11 +71,13 @@ class HomeViewModel @Inject constructor(
     private val weightRepository: WeightRepository,
     private val exerciseRepository: ExerciseRepository,
     private val waterRepository: WaterRepository,
+    private val healthConnectRepository: HealthConnectRepository,
     private val notificationPreferences: NotificationPreferences,
     private val insightPreferences: InsightPreferences,
     private val appPreferences: AppPreferences,
     private val reminderScheduler: ReminderScheduler,
     private val widgetRefreshNotifier: WidgetRefreshNotifier,
+    private val healthConnectManager: HealthConnectManager,
     @ApplicationContext private val appContext: Context,
 ) : ViewModel() {
 
@@ -91,6 +97,31 @@ class HomeViewModel @Inject constructor(
 
     private val _navEvents = Channel<HomeNavEvent>(Channel.BUFFERED)
     val navEvents = _navEvents.receiveAsFlow()
+
+    private val _requestStepsPermission = Channel<Unit>(Channel.BUFFERED)
+    val requestStepsPermission = _requestStepsPermission.receiveAsFlow()
+
+    private val _stepsPermissionGranted = MutableStateFlow(false)
+    val stepsPermissionGranted: StateFlow<Boolean> = _stepsPermissionGranted
+
+    private val stepsForDate: StateFlow<Long?> =
+        combine(flowOf(userId), _currentDate) { id, date -> id to date }
+            .flatMapLatest { (id, date) ->
+                if (id == null) {
+                    flowOf(null)
+                } else {
+                    healthConnectRepository.observeStepsForDate(id, date)
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    val todaySteps: StateFlow<Long?> = stepsForDate
+
+    val healthConnectAvailable: Boolean
+        get() = healthConnectManager.isAvailable
+
+    val stepsReadPermissions: Set<String>
+        get() = healthConnectManager.stepsReadPermissions
 
     private val remoteSnapshot: StateFlow<Triple<List<FoodEntry>, UserGoal?, List<WeightEntry>>> =
         flowOf(userId)
@@ -151,12 +182,16 @@ class HomeViewModel @Inject constructor(
         combine(appPreferences.unitSystem, appPreferences.language) { unit, language ->
             unit to language
         },
+        combine(stepsForDate, _stepsPermissionGranted) { steps, permissionGranted ->
+            steps to permissionGranted
+        },
         insightPreferences.dismissedIds,
-    ) { dateRemoteWater, extras, prefs, dismissedIds ->
+    ) { dateRemoteWater, extras, prefs, stepsState, dismissedIds ->
         val (date, remote, water) = dateRemoteWater
         val (foods, goal, weights) = remote
         val (exercises, detailsExpanded, feedback, draftWeight, warningsEnabled) = extras
         val (unitSystem, language) = prefs
+        val (steps, permissionGranted) = stepsState
         buildUiState(
             date = date,
             foods = foods,
@@ -171,6 +206,8 @@ class HomeViewModel @Inject constructor(
             unitSystem = unitSystem,
             language = language,
             dismissedIds = dismissedIds,
+            todaySteps = steps,
+            stepsPermissionGranted = permissionGranted,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -203,6 +240,54 @@ class HomeViewModel @Inject constructor(
     init {
         refresh()
         observeIntakeNotifications()
+        refreshStepsAccess()
+        syncPendingDailySteps()
+    }
+
+    fun refreshStepsAccess() {
+        if (!healthConnectManager.isAvailable) {
+            _stepsPermissionGranted.value = false
+            return
+        }
+        viewModelScope.launch {
+            val granted = healthConnectManager.hasStepsPermission()
+            _stepsPermissionGranted.value = granted
+            if (granted) {
+                syncSteps()
+            }
+        }
+    }
+
+    fun ensureStepsPermissionAndRefresh() {
+        if (!healthConnectManager.isAvailable) return
+        viewModelScope.launch {
+            if (healthConnectManager.hasStepsPermission()) {
+                _stepsPermissionGranted.value = true
+                syncSteps()
+            } else {
+                _requestStepsPermission.send(Unit)
+            }
+        }
+    }
+
+    fun onHealthConnectPermissionsResult(granted: Set<String>) {
+        val hasPermission = granted.containsAll(healthConnectManager.stepsReadPermissions)
+        _stepsPermissionGranted.value = hasPermission
+        if (hasPermission) {
+            syncSteps()
+        }
+    }
+
+    private fun syncSteps() {
+        viewModelScope.launch {
+            healthConnectRepository.syncFromHealthConnect()
+        }
+    }
+
+    private fun syncPendingDailySteps() {
+        viewModelScope.launch {
+            healthConnectRepository.syncDailySteps()
+        }
     }
 
     /**
@@ -361,6 +446,7 @@ class HomeViewModel @Inject constructor(
             runCatching { weightRepository.refresh(id) }
             runCatching { exerciseRepository.refresh(id) }
             runCatching { waterRepository.refresh(id) }
+            syncSteps()
         }
     }
 
@@ -424,7 +510,7 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 waterRepository.addWaterEntry(
-                    amountMl = WATER_STEP_ML,
+                    amountMl = WaterDefaults.STEP_ML,
                     createdAt = DateTimeUtils.atNowOnDateIso(_currentDate.value),
                 )
             } catch (e: Exception) {
@@ -438,7 +524,7 @@ class HomeViewModel @Inject constructor(
             try {
                 waterRepository.removeLastForDate(
                     date = _currentDate.value,
-                    amountMl = WATER_STEP_ML,
+                    amountMl = WaterDefaults.STEP_ML,
                 )
             } catch (e: Exception) {
                 _events.send(UiEvent.Message(e.message ?: "Could not remove water"))
@@ -506,6 +592,8 @@ class HomeViewModel @Inject constructor(
         unitSystem: UnitSystem,
         language: AppLanguage,
         dismissedIds: Set<String>,
+        todaySteps: Long? = null,
+        stepsPermissionGranted: Boolean = false,
     ): HomeUiState {
         insightPreferences.ensureCurrentWeek()
         val effectiveDismissedIds = insightPreferences.dismissedIds.value
@@ -544,15 +632,32 @@ class HomeViewModel @Inject constructor(
             )
         }
 
+        val loggedExerciseItems = exercises.map {
+            ExerciseLogItem(
+                id = it.id,
+                name = it.name,
+                caloriesBurned = it.caloriesBurned.roundToInt(),
+            )
+        }
+        val loggedCaloriesBurned = loggedExerciseItems.sumOf { it.caloriesBurned }
+        val stepCaloriesBurned = resolveStepCaloriesBurned(
+            steps = todaySteps,
+        )
+        val exerciseItems = buildExerciseItemsWithSteps(
+            loggedExercises = loggedExerciseItems,
+            steps = todaySteps,
+            stepCaloriesBurned = stepCaloriesBurned,
+        )
+
         return HomeUiState(
             currentDate = date,
             currentDateLabel = DateTimeUtils.formatWeekdayMonthDay(date),
             dailyGoal = dailyGoal,
             totalEaten = dayFoods.sumOf { it.calories },
-            totalBurned = exercises.sumOf { it.caloriesBurned.roundToInt() },
+            totalBurned = loggedCaloriesBurned + stepCaloriesBurned,
             waterIntakeMl = waterIntakeMl,
-            waterGoalMl = WATER_GOAL_ML,
-            waterStepMl = WATER_STEP_ML,
+            waterGoalMl = WaterDefaults.GOAL_ML,
+            waterStepMl = WaterDefaults.STEP_ML,
             protein = MacroProgress(
                 currentGrams = dayFoods.sumOf { it.protein },
                 targetGrams = macroTargets.proteinGrams,
@@ -574,13 +679,10 @@ class HomeViewModel @Inject constructor(
             lunch = section(MealType.LUNCH, R.string.meal_lunch),
             dinner = section(MealType.DINNER, R.string.meal_dinner),
             snacks = section(MealType.SNACKS, R.string.meal_snacks),
-            exercises = exercises.map {
-                ExerciseLogItem(
-                    id = it.id,
-                    name = it.name,
-                    caloriesBurned = it.caloriesBurned.roundToInt(),
-                )
-            },
+            exercises = exerciseItems,
+            todaySteps = todaySteps,
+            healthConnectAvailable = healthConnectManager.isAvailable,
+            stepsPermissionGranted = stepsPermissionGranted,
             todayWeightKg = dayWeight,
             unitSystem = unitSystem,
             language = language,
@@ -611,6 +713,29 @@ class HomeViewModel @Inject constructor(
         return goal?.currentWeight?.takeIf { it > 0.0 }
     }
 
+    private fun resolveStepCaloriesBurned(steps: Long?): Int {
+        val stepCount = steps ?: return 0
+        if (stepCount <= 0L) return 0
+        return StepCalorieCalculator.caloriesFromSteps(stepCount)
+    }
+
+    private fun buildExerciseItemsWithSteps(
+        loggedExercises: List<ExerciseLogItem>,
+        steps: Long?,
+        stepCaloriesBurned: Int,
+    ): List<ExerciseLogItem> {
+        val stepCount = steps ?: return loggedExercises
+        if (stepCount <= 0L) return loggedExercises
+
+        val stepsEntry = ExerciseLogItem(
+            id = HEALTH_CONNECT_STEPS_ID,
+            name = appContext.getString(R.string.steps_exercise_entry_format, stepCount, stepCaloriesBurned),
+            caloriesBurned = stepCaloriesBurned,
+            isHealthConnectSteps = true,
+        )
+        return listOf(stepsEntry) + loggedExercises
+    }
+
     private data class Quint<A, B, C, D, E>(
         val first: A,
         val second: B,
@@ -621,8 +746,7 @@ class HomeViewModel @Inject constructor(
 
     private companion object {
         const val NOTIF_DEBUG_TAG = "NOTIF_DEBUG"
-        const val WATER_GOAL_ML = 2000
-        const val WATER_STEP_ML = 250
+        const val HEALTH_CONNECT_STEPS_ID = "health_connect_steps"
         const val FEEDBACK_DURATION_MS = 1_500L
         const val WEIGHT_PERSIST_DEBOUNCE_MS = 450L
         const val DEFAULT_WEIGHT_KG = 60.0

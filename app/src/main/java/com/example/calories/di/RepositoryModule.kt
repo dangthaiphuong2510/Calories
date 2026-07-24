@@ -10,6 +10,8 @@ import com.example.calories.data.repository.FridgeRepository
 import com.example.calories.data.repository.FridgeRepositoryImpl
 import com.example.calories.data.repository.ProfileRepository
 import com.example.calories.data.repository.ProfileRepositoryImpl
+import com.example.calories.data.repository.HealthConnectRepository
+import com.example.calories.data.repository.HealthConnectRepositoryImpl
 import com.example.calories.data.repository.RecipeRepository
 import com.example.calories.data.repository.RecipeRepositoryImpl
 import com.example.calories.data.repository.UserGoalsRepository
@@ -18,6 +20,8 @@ import com.example.calories.data.repository.WaterRepository
 import com.example.calories.data.repository.WaterRepositoryImpl
 import com.example.calories.data.repository.WeightRepository
 import com.example.calories.data.repository.WeightRepositoryImpl
+import com.example.calories.widget.WidgetRefreshNotifier
+import com.example.calories.widget.WidgetRefresher
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -63,4 +67,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindRecipeRepository(impl: RecipeRepositoryImpl): RecipeRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWidgetRefresher(impl: WidgetRefreshNotifier): WidgetRefresher
+
+    @Binds
+    @Singleton
+    abstract fun bindHealthConnectRepository(impl: HealthConnectRepositoryImpl): HealthConnectRepository
 }

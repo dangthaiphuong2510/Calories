@@ -37,6 +37,34 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/rowSteps"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/steps_title"
+                android:textAppearance="@style/TextAppearance.Calories.Home.Secondary" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnConnectSteps"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="36dp"
+                android:text="@string/steps_connect_health_connect"
+                android:visibility="gone"
+                tools:visibility="visible" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/llExercises"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

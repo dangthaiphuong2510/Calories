@@ -7,6 +7,7 @@ import com.example.calories.model.ExerciseEntry
 import com.example.calories.model.FoodEntry
 import com.example.calories.model.UserGoal
 import com.example.calories.model.WeightEntry
+import com.example.calories.util.WaterDefaults
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
@@ -23,6 +24,9 @@ data class CaloriesWidgetSnapshot(
     val totalBurned: Int = 0,
     val caloriesRemaining: Int = 0,
     val progressPercent: Int = 0,
+    val waterIntakeMl: Int = 0,
+    val waterGoalMl: Int = WaterDefaults.GOAL_ML,
+    val waterProgressPercent: Int = 0,
     val activeInsight: ProgressInsight? = null,
 )
 
@@ -36,6 +40,7 @@ object CaloriesWidgetSnapshotBuilder {
         weights: List<WeightEntry>,
         todayExercises: List<ExerciseEntry>,
         dismissedIds: Set<String>,
+        waterIntakeMl: Int,
         today: LocalDate,
     ): CaloriesWidgetSnapshot {
         if (!isSignedIn) {
@@ -50,6 +55,12 @@ object CaloriesWidgetSnapshotBuilder {
             0
         } else {
             ((totalEaten.toFloat() / dailyGoal) * 100f).toInt().coerceIn(0, 100)
+        }
+        val waterGoalMl = WaterDefaults.GOAL_ML
+        val waterProgressPercent = if (waterGoalMl <= 0) {
+            0
+        } else {
+            ((waterIntakeMl.toFloat() / waterGoalMl) * 100f).toInt().coerceIn(0, 100)
         }
 
         val activeInsight = if (goal == null || dailyGoal <= 0) {
@@ -76,6 +87,9 @@ object CaloriesWidgetSnapshotBuilder {
             totalBurned = totalBurned,
             caloriesRemaining = caloriesRemaining,
             progressPercent = progressPercent,
+            waterIntakeMl = waterIntakeMl,
+            waterGoalMl = waterGoalMl,
+            waterProgressPercent = waterProgressPercent,
             activeInsight = activeInsight,
         )
     }
